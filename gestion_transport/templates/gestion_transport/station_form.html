@@ -1,0 +1,258 @@
+{% extends "gestion_transport/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - Transport Universitaire{% endblock %}
+
+{% block body_class %}page-modal-entities{% endblock %}
+
+{% block extra_head %}
+<style>
+    body.page-modal-entities .station-geocode-tools {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    body.page-modal-entities .station-geocode-btn {
+        border: 1px solid var(--brand, #a41e1e);
+        background: color-mix(in srgb, var(--brand, #a41e1e) 10%, white 90%);
+        color: var(--brand, #a41e1e);
+        padding: 7px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    body.page-modal-entities .station-geocode-btn:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+    }
+
+    body.page-modal-entities .station-geocode-status {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    body.page-modal-entities .station-geocode-results {
+        margin-top: 8px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        max-height: 180px;
+        overflow-y: auto;
+        background: var(--card);
+    }
+
+    body.page-modal-entities .station-geocode-results:empty {
+        display: none;
+    }
+
+    body.page-modal-entities .station-geocode-item {
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+        text-align: left;
+        padding: 9px 10px;
+        font-size: 12px;
+        color: var(--text);
+        cursor: pointer;
+    }
+
+    body.page-modal-entities .station-geocode-item:last-child {
+        border-bottom: 0;
+    }
+
+    body.page-modal-entities .station-geocode-item:hover {
+        background: color-mix(in srgb, var(--brand, #a41e1e) 8%, white 92%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="entity-modal-backdrop">
+    <div class="entity-modal-card">
+        <div class="entity-modal-head">
+            <h2><i class="fas fa-map-marker-alt"></i> {{ title }}</h2>
+            <p>
+                {% if form.instance.pk %}
+                    Modifiez les informations de la station {{ form.instance.nom_station }}
+                {% else %}
+                    Enregistrez une nouvelle station dans le système de transport
+                {% endif %}
+            </p>
+        </div>
+
+        <form method="post" novalidate data-geocode-url="{% url 'gestion_transport:geocode_station_address' %}">
+            {% csrf_token %}
+
+            <div class="entity-grid">
+                <div class="form-group">
+                    <label for="{{ form.nom_station.id_for_label }}">{{ form.nom_station.label }}</label>
+                    {{ form.nom_station }}
+                    {% if form.nom_station.errors %}
+                        <div class="error-text">{{ form.nom_station.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.adresse.id_for_label }}">{{ form.adresse.label }}</label>
+                    {{ form.adresse }}
+                    {% if form.adresse.errors %}
+                        <div class="error-text">{{ form.adresse.errors|join:', ' }}</div>
+                    {% endif %}
+                    <div class="station-geocode-tools">
+                        <button type="button" class="station-geocode-btn" id="stationGeocodeBtn">
+                            <i class="fas fa-search-location"></i> Rechercher l'adresse
+                        </button>
+                        <span class="station-geocode-status" id="stationGeocodeStatus"></span>
+                    </div>
+                    <div class="station-geocode-results" id="stationGeocodeResults"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.latitude.id_for_label }}">{{ form.latitude.label }}</label>
+                    {{ form.latitude }}
+                    {% if form.latitude.errors %}
+                        <div class="error-text">{{ form.latitude.errors|join:', ' }}</div>
+                    {% endif %}
+                    <small class="helper">Coordonnée GPS latitude (ex: 48.8566 pour Paris)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.longitude.id_for_label }}">{{ form.longitude.label }}</label>
+                    {{ form.longitude }}
+                    {% if form.longitude.errors %}
+                        <div class="error-text">{{ form.longitude.errors|join:', ' }}</div>
+                    {% endif %}
+                    <small class="helper">Coordonnée GPS longitude (ex: 2.3522 pour Paris)</small>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="error-box">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="form-actions">
+                <button type="submit">
+                    {% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} la station
+                </button>
+                <a href="{% url 'gestion_transport:liste_stations' %}" class="js-popup-cancel" data-popup-cancel="1">Retour à la liste</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'gestion_transport/app.js' %}?v=18"></script>
+    <script>
+        (function () {
+            var form = document.querySelector('form[data-geocode-url]');
+            if (!form) return;
+
+            var geocodeUrl = form.getAttribute('data-geocode-url');
+            var addressInput = document.getElementById('{{ form.adresse.id_for_label }}');
+            var latitudeInput = document.getElementById('{{ form.latitude.id_for_label }}');
+            var longitudeInput = document.getElementById('{{ form.longitude.id_for_label }}');
+            var stationNameInput = document.getElementById('{{ form.nom_station.id_for_label }}');
+            var btn = document.getElementById('stationGeocodeBtn');
+            var status = document.getElementById('stationGeocodeStatus');
+            var resultsWrap = document.getElementById('stationGeocodeResults');
+
+            if (!addressInput || !latitudeInput || !longitudeInput || !btn || !status || !resultsWrap || !geocodeUrl) {
+                return;
+            }
+
+            function setStatus(text, isError) {
+                status.textContent = text || '';
+                status.style.color = isError ? '#b91c1c' : '';
+            }
+
+            function applyResult(item) {
+                addressInput.value = item.display_name || addressInput.value;
+                latitudeInput.value = item.latitude || '';
+                longitudeInput.value = item.longitude || '';
+
+                if (stationNameInput && !stationNameInput.value.trim()) {
+                    var inferred = (item.name || '').trim();
+                    if (inferred) {
+                        stationNameInput.value = inferred;
+                    }
+                }
+            }
+
+            function renderResults(items) {
+                resultsWrap.innerHTML = '';
+                if (!items || !items.length) {
+                    return;
+                }
+
+                items.forEach(function (item) {
+                    var choiceBtn = document.createElement('button');
+                    choiceBtn.type = 'button';
+                    choiceBtn.className = 'station-geocode-item';
+                    choiceBtn.textContent = item.display_name + ' (' + item.latitude + ', ' + item.longitude + ')';
+                    choiceBtn.addEventListener('click', function () {
+                        applyResult(item);
+                        setStatus('Coordonnées mises à jour depuis la suggestion sélectionnée.', false);
+                    });
+                    resultsWrap.appendChild(choiceBtn);
+                });
+            }
+
+            async function geocodeAddress() {
+                var query = (addressInput.value || '').trim();
+                if (query.length < 3) {
+                    setStatus('Saisissez au moins 3 caractères.', true);
+                    return;
+                }
+
+                btn.disabled = true;
+                    setStatus('Recherche en cours (Algérie)...', false);
+
+                try {
+                    var response = await fetch(geocodeUrl + '?q=' + encodeURIComponent(query), {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+
+                    var data = await response.json();
+
+                    if (!response.ok || !data.ok) {
+                        setStatus(data.message || "Impossible de géolocaliser cette adresse.", true);
+                        resultsWrap.innerHTML = '';
+                        return;
+                    }
+
+                    var results = data.results || [];
+                    if (!results.length) {
+                        setStatus('Aucun résultat trouvé pour cette adresse.', true);
+                        resultsWrap.innerHTML = '';
+                        return;
+                    }
+
+                    applyResult(results[0]);
+                    renderResults(results);
+                    setStatus('Coordonnées ajoutées automatiquement. Choisissez une autre suggestion si besoin.', false);
+                } catch (err) {
+                    setStatus('Erreur réseau pendant la recherche d\'adresse.', true);
+                    resultsWrap.innerHTML = '';
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            btn.addEventListener('click', geocodeAddress);
+            addressInput.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    geocodeAddress();
+                }
+            });
+        }());
+    </script>
+{% endblock %}

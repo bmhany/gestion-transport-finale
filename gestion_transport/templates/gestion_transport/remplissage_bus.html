@@ -1,0 +1,312 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taux de remplissage des bus - Transport Universitaire</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'gestion_transport/style.css' %}">
+</head>
+<body class="page-remplissage-bus" data-dark="0"
+      data-login-url="{% url 'gestion_transport:admin_login' %}"
+      data-logout-url="{% url 'gestion_transport:admin_logout' %}"
+      data-logout-confirm="Êtes-vous sûr de vouloir vous déconnecter ?">
+    <div id="appLayout">
+        {% csrf_token %}
+        {% include 'gestion_transport/_admin_sidebar.html' with active_nav='rapports' %}
+        <div class="main-col">
+            <header>
+                <h2>Taux de remplissage des bus</h2>
+                <div class="user-badge badge-admin">
+                    <i class="fas fa-user-shield"></i>
+                    Administrateur
+                </div>
+            </header>
+            <main>
+                <div class="panel report-shell">
+                    <div class="report-intro">
+                        <h3><i class="fas fa-chart-pie"></i> Taux de remplissage</h3>
+                        <span class="report-kpi"><i class="fas fa-bus"></i> {{ bus_stats|length }} bus analysés</span>
+                    </div>
+                    <p>Vue rapide du niveau d'occupation pour identifier les lignes sous-utilisées ou saturées.</p>
+                    <div class="report-bus-list report-bus-list--compact">
+                        {% for stat in bus_stats %}
+                        <article class="report-bus-card">
+                            <div class="report-bus-head">
+                                <div class="bus-icon"><i class="fas fa-bus"></i></div>
+                                <div class="report-bus-title">
+                                    <h4>{{ stat.bus.numero_immatriculation }}</h4>
+                                    <p><i class="fas fa-route"></i> {{ stat.ligne.nom_ligne }}</p>
+                                </div>
+                                <div>
+                                    {% if stat.taux < 50 %}
+                                        <span class="fill-badge fill-low">{{ stat.taux }}%</span>
+                                    {% elif stat.taux < 80 %}
+                                        <span class="fill-badge fill-mid">{{ stat.taux }}%</span>
+                                    {% else %}
+                                        <span class="fill-badge fill-high">{{ stat.taux }}%</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="report-bus-metrics">
+                                <div class="line-meta-item">
+                                    <span class="meta-label"><i class="fas fa-users"></i> Capacité</span>
+                                    <strong>{{ stat.capacite }}</strong>
+                                </div>
+                                <div class="line-meta-item">
+                                    <span class="meta-label"><i class="fas fa-user-graduate"></i> Étudiants</span>
+                                    <strong>{{ stat.etudiants }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="occupancy-track">
+                                <div class="occupancy-fill" data-rate="{{ stat.taux }}"></div>
+                            </div>
+                        </article>
+                        {% empty %}
+                        <div class="line-empty-state">
+                            <i class="fas fa-bus"></i>
+                            <p>Aucun bus affecté actuellement</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="panel report-shell">
+                    <div class="report-intro">
+                        <h3><i class="fas fa-triangle-exclamation"></i> Analyse incidents et retards</h3>
+                        <span class="report-kpi"><i class="fas fa-calendar"></i> Période analytique</span>
+                    </div>
+                    <form method="get" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:16px; align-items:end;">
+                        <div>
+                            <label for="period_days" class="meta-label">Période</label>
+                            <select id="period_days" name="period_days" class="form-select form-select-sm">
+                                {% for days in period_options %}
+                                    <option value="{{ days }}" {% if selected_period_days == days %}selected{% endif %}>{{ days }} derniers jours</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="incident_ligne_id" class="meta-label">Ligne</label>
+                            <select id="incident_ligne_id" name="incident_ligne_id" class="form-select form-select-sm">
+                                <option value="">Toutes les lignes</option>
+                                {% for ligne in lignes %}
+                                    <option value="{{ ligne.id }}" {% if selected_ligne_id == ligne.id|stringformat:"s" %}selected{% endif %}>{{ ligne.nom_ligne }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="incident_type" class="meta-label">Type incident</label>
+                            <select id="incident_type" name="incident_type" class="form-select form-select-sm">
+                                <option value="">Tous les types</option>
+                                {% for incident_type in incident_type_options %}
+                                    <option value="{{ incident_type }}" {% if selected_incident_type == incident_type %}selected{% endif %}>{{ incident_type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="retard_min" class="meta-label">Retard min (min)</label>
+                            <input id="retard_min" name="retard_min" type="number" min="0" value="{% if selected_retard_min is not None %}{{ selected_retard_min }}{% endif %}" class="form-control form-control-sm" placeholder="ex: 10">
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter"></i> Filtrer</button>
+                            <a href="{% url 'gestion_transport:remplissage_bus' %}" class="btn btn-sm btn-outline-secondary">Réinitialiser</a>
+                        </div>
+                    </form>
+                    <p style="color:#666; font-size:0.9rem; margin-bottom:16px;"><i class="fas fa-info-circle"></i> Données analysées à partir du <strong>{{ period_start|date:"d/m/Y" }}</strong></p>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:20px;">
+                        <div class="analytics-kpi-card is-active" data-category="incidents" style="cursor:pointer; background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%); color:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(255,107,107,0.2); border:2px solid transparent;">
+                            <div style="font-size:0.85rem; opacity:0.9;"><i class="fas fa-exclamation-circle"></i> Incidents</div>
+                            <div style="font-size:2.4rem; font-weight:bold; margin-top:8px;">{{ incidents_count_30 }}</div>
+                            <div style="font-size:0.8rem; margin-top:4px; opacity:0.85;">déclaration(s)</div>
+                        </div>
+
+                        <div class="analytics-kpi-card" data-category="retards" style="cursor:pointer; background: linear-gradient(135deg, #ffa502 0%, #ffb84d 100%); color:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(255,165,2,0.2); border:2px solid transparent;">
+                            <div style="font-size:0.85rem; opacity:0.9;"><i class="fas fa-clock"></i> Trajets retardés</div>
+                            <div style="font-size:2.4rem; font-weight:bold; margin-top:8px;">{{ retards_count_30 }}</div>
+                            <div style="font-size:0.8rem; margin-top:4px; opacity:0.85;">trajet(s)</div>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #fd7e14 0%, #ffa500 100%); color:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(253,126,20,0.2);">
+                            <div style="font-size:0.85rem; opacity:0.9;"><i class="fas fa-hourglass-half"></i> Retard cumulé</div>
+                            <div style="font-size:2.4rem; font-weight:bold; margin-top:8px;">{{ retard_total_minutes }}</div>
+                            <div style="font-size:0.8rem; margin-top:4px; opacity:0.85;">minutes</div>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #4ecdc4 0%, #44a9b0 100%); color:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(78,205,196,0.2);">
+                            <div style="font-size:0.85rem; opacity:0.9;"><i class="fas fa-bar-chart"></i> Retard moyen</div>
+                            <div style="font-size:2.4rem; font-weight:bold; margin-top:8px;">{{ retard_avg_minutes|floatformat:1 }}</div>
+                            <div style="font-size:0.8rem; margin-top:4px; opacity:0.85;">minutes</div>
+                        </div>
+
+                        <div class="analytics-kpi-card" data-category="a_temps" style="cursor:pointer; background: linear-gradient(135deg, #2f9e44 0%, #51cf66 100%); color:white; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(47,158,68,0.2); border:2px solid transparent;">
+                            <div style="font-size:0.85rem; opacity:0.9;"><i class="fas fa-check-circle"></i> Trajets a temps (regle conducteur)</div>
+                            <div style="font-size:2.4rem; font-weight:bold; margin-top:8px;">{{ trajets_a_temps_count_30 }}</div>
+                            <div style="font-size:0.8rem; margin-top:4px; opacity:0.85;">trajet(s)</div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+                        <div style="border:1px solid #ffe0e0; border-radius:8px; padding:14px; background:#fff9f9;">
+                            <h5 style="margin:0 0 12px 0; color:#c92a2a; font-size:1rem;"><i class="fas fa-fire"></i> Lignes les plus incidentées</h5>
+                            <div>
+                                {% for item in top_lignes_incidents %}
+                                    <div style="margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #ffe0e0;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                            <span style="font-size:0.9rem; font-weight:500;">{{ item.trajet__ligne__nom_ligne }}</span>
+                                            <span style="background:#ff6b6b; color:white; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:bold;">{{ item.nb }}</span>
+                                        </div>
+                                        <div style="background:#fff; height:6px; border-radius:3px; overflow:hidden; border:1px solid #ffe0e0;">
+                                            <div style="background:linear-gradient(90deg, #ff6b6b 0%, #ff8787 100%); height:100%; width:{% widthratio item.nb top_lignes_incidents.0.nb 100 %}%;"></div>
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div style="color:#999; font-style:italic; font-size:0.9rem; text-align:center; padding:12px;">✓ Aucun incident</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div style="border:1px solid #ffe8d6; border-radius:8px; padding:14px; background:#fffaf5;">
+                            <h5 style="margin:0 0 12px 0; color:#fd7e14; font-size:1rem;"><i class="fas fa-gauge-high"></i> Lignes les plus en retard</h5>
+                            <div>
+                                {% for item in top_lignes_retards %}
+                                    <div style="margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #ffe8d6;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                            <span style="font-size:0.9rem; font-weight:500;">{{ item.ligne__nom_ligne }}</span>
+                                            <span style="background:#ffa502; color:white; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:bold;">{{ item.nb }} trajet(s)</span>
+                                        </div>
+                                        <div style="font-size:0.8rem; color:#666; margin-bottom:4px;">
+                                            <i class="fas fa-hourglass-half"></i> moy. <strong>{{ item.avg_retard|floatformat:1 }} min</strong>
+                                        </div>
+                                        <div style="background:#fff; height:6px; border-radius:3px; overflow:hidden; border:1px solid #ffe8d6;">
+                                            <div style="background:linear-gradient(90deg, #ffa502 0%, #ffb84d 100%); height:100%; width:{% widthratio item.nb top_lignes_retards.0.nb 100 %}%;"></div>
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div style="color:#999; font-style:italic; font-size:0.9rem; text-align:center; padding:12px;">✓ Aucun retard</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border-top:2px solid #e0e0e0; padding-top:16px;" class="analytics-list-block" data-category-panel="incidents">
+                        <h5 style="margin:0 0 12px 0; color:#333; font-size:1rem;"><i class="fas fa-list"></i> Incidents récents</h5>
+                        <div class="report-bus-list">
+                            {% for incident in incidents_recents %}
+                                <article class="report-bus-card" style="border-left:4px solid #ff6b6b; background:#fff9f9;">
+                                    <div class="report-bus-head">
+                                        <div class="bus-icon" style="background:#ff6b6b; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center;"><i class="fas fa-exclamation"></i></div>
+                                        <div class="report-bus-title">
+                                            <h4>{{ incident.trajet.ligne.nom_ligne }}</h4>
+                                            <p><i class="fas fa-bus"></i> Bus {{ incident.trajet.bus.numero_immatriculation }} | Trajet #{{ incident.trajet.id }}</p>
+                                        </div>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                            {% if incident.type_incident %}
+                                                <span style="background:#c92a2a; color:white; padding:4px 10px; border-radius:4px; font-size:0.75rem; font-weight:bold;">{{ incident.type_incident }}</span>
+                                            {% endif %}
+                                            <span style="background:#e0e0e0; color:#333; padding:4px 10px; border-radius:4px; font-size:0.75rem;">{{ incident.date_heure_incident|date:"d/m H:i" }}</span>
+                                        </div>
+                                    </div>
+                                    <p style="margin:8px 0 0 0; color:#555; font-size:0.9rem;">{{ incident.description }}</p>
+                                </article>
+                            {% empty %}
+                                <div class="line-empty-state">
+                                    <i class="fas fa-check-circle" style="font-size:2.2rem; color:#4ecdc4; margin-bottom:8px;"></i>
+                                    <p>Aucun incident sur la période analysée.</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div style="border-top:2px solid #e0e0e0; padding-top:16px; margin-top:20px; display:none;" class="analytics-list-block" data-category-panel="retards">
+                        <h5 style="margin:0 0 12px 0; color:#fd7e14; font-size:1rem;"><i class="fas fa-clock"></i> Trajets recents retardes</h5>
+                        <div class="report-bus-list">
+                            {% for trajet in trajets_retardes_recents %}
+                                <article class="report-bus-card" style="border-left:4px solid #ffa502; background:#fffaf0;">
+                                    <div class="report-bus-head">
+                                        <div class="bus-icon" style="background:#fd7e14; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center;"><i class="fas fa-hourglass-half"></i></div>
+                                        <div class="report-bus-title">
+                                            <h4>{{ trajet.ligne.nom_ligne }}</h4>
+                                            <p><i class="fas fa-bus"></i> Bus {{ trajet.bus.numero_immatriculation }} | Trajet #{{ trajet.id }}</p>
+                                        </div>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                            <span style="background:#fd7e14; color:white; padding:4px 10px; border-radius:4px; font-size:0.75rem; font-weight:bold;">+{{ trajet.retard_minutes }} min</span>
+                                            <span style="background:#e0e0e0; color:#333; padding:4px 10px; border-radius:4px; font-size:0.75rem;">{{ trajet.date_trajet|date:"d/m/Y" }} {{ trajet.horaire.heure_depart|time:"H:i" }}</span>
+                                        </div>
+                                    </div>
+                                </article>
+                            {% empty %}
+                                <div class="line-empty-state">
+                                    <i class="fas fa-check-circle" style="font-size:2.2rem; color:#4ecdc4; margin-bottom:8px;"></i>
+                                    <p>Aucun trajet retarde sur la periode analysee.</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div style="border-top:2px solid #e0e0e0; padding-top:16px; margin-top:20px; display:none;" class="analytics-list-block" data-category-panel="a_temps">
+                        <h5 style="margin:0 0 12px 0; color:#2f9e44; font-size:1rem;"><i class="fas fa-check-double"></i> Trajets recents a temps</h5>
+                        <div class="report-bus-list">
+                            {% for trajet in trajets_a_temps_recents %}
+                                <article class="report-bus-card" style="border-left:4px solid #51cf66; background:#f4fff6;">
+                                    <div class="report-bus-head">
+                                        <div class="bus-icon" style="background:#2f9e44; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center;"><i class="fas fa-check"></i></div>
+                                        <div class="report-bus-title">
+                                            <h4>{{ trajet.ligne.nom_ligne }}</h4>
+                                            <p><i class="fas fa-bus"></i> Bus {{ trajet.bus.numero_immatriculation }} | Trajet #{{ trajet.id }}</p>
+                                        </div>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                            <span style="background:#2f9e44; color:white; padding:4px 10px; border-radius:4px; font-size:0.75rem; font-weight:bold;">A temps</span>
+                                            <span style="background:#e0e0e0; color:#333; padding:4px 10px; border-radius:4px; font-size:0.75rem;">{{ trajet.date_trajet|date:"d/m/Y" }} {{ trajet.horaire.heure_depart|time:"H:i" }}</span>
+                                        </div>
+                                    </div>
+                                </article>
+                            {% empty %}
+                                <div class="line-empty-state">
+                                    <i class="fas fa-clock" style="font-size:2.2rem; color:#2f9e44; margin-bottom:8px;"></i>
+                                    <p>Aucun trajet a temps sur la periode analysee.</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var cards = document.querySelectorAll('.analytics-kpi-card');
+            var blocks = document.querySelectorAll('.analytics-list-block');
+
+            function showCategory(category) {
+                cards.forEach(function (card) {
+                    var active = card.getAttribute('data-category') === category;
+                    card.classList.toggle('is-active', active);
+                    card.style.borderColor = active ? 'rgba(255,255,255,0.95)' : 'transparent';
+                    card.style.transform = active ? 'translateY(-2px)' : 'none';
+                });
+
+                blocks.forEach(function (block) {
+                    var visible = block.getAttribute('data-category-panel') === category;
+                    block.style.display = visible ? 'block' : 'none';
+                });
+            }
+
+            cards.forEach(function (card) {
+                card.addEventListener('click', function () {
+                    showCategory(card.getAttribute('data-category'));
+                });
+            });
+
+            showCategory('incidents');
+        });
+    </script>
+
+    <script src="{% static 'gestion_transport/app.js' %}?v=9"></script>
+</body>
+</html>

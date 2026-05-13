@@ -1,0 +1,43 @@
+{% extends "gestion_transport/base.html" %}
+{% load static %}
+
+{% block title %}Supprimer la ligne{% endblock %}
+
+{% block body_class %}page-modal-entities{% endblock %}
+
+{% block content %}
+<div class="entity-modal-backdrop">
+    <div class="entity-modal-card">
+        <div class="entity-modal-head">
+            <h2><i class="fas fa-trash"></i> Confirmer la suppression</h2>
+            <p>Êtes-vous sûr de vouloir supprimer cette ligne ? Cette action est irréversible.</p>
+        </div>
+
+        <div class="entity-confirm-body">
+            <div class="entity-summary-card">
+                <div class="entity-summary-title">
+                    <i class="fas fa-route"></i> {{ ligne.nom_ligne }}
+                </div>
+                <ul class="entity-summary-list">
+                    <li>Description: {{ ligne.description|default:'Aucune description' }}</li>
+                    {% if ligne.distance_km %}
+                    <li>Distance: {{ ligne.distance_km }} km</li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <div class="entity-danger-box">
+                <strong>Attention :</strong> Toutes les données liées à cette ligne (horaires, stations, affectations, etc.) seront supprimées.
+            </div>
+
+            <form method="post" novalidate class="entity-confirm-form">
+                {% csrf_token %}
+                <div class="form-actions">
+                    <a href="{% url 'gestion_transport:liste_lignes' %}" class="js-popup-cancel" data-popup-cancel="1">Annuler</a>
+                    <button type="submit">Supprimer définitivement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

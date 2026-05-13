@@ -1,0 +1,37 @@
+GUIDE ULTRA SIMPLE - PARTAGE DU PROJET MYCOUS
+
+METHODE LA PLUS SIMPLE POUR VOS CAMARADES
+- Ne leur envoyez pas le code au debut.
+- Lancez vous-meme le projet sur votre PC avec 3_Lancer_Reseau_Wifi.bat.
+- Envoyez-leur seulement le lien affiche par le script.
+- Eux n'ont besoin que d'un navigateur sur le meme Wi-Fi.
+
+1) Sur votre PC (une seule fois)
+- Ouvrez le dossier PackPretAPartager
+- Double-cliquez sur: 1_Installer.bat
+- Attendez le message: [SUCCES] Installation terminee
+
+2) Usage local (sur votre PC)
+- Double-cliquez: 2_Lancer_Local.bat
+- Ouvrez: http://127.0.0.1:8000
+
+3) Partager avec vos camarades (meme Wi-Fi)
+- Double-cliquez: 3_Lancer_Reseau_Wifi.bat
+- Le script affiche directement le lien a partager
+- Exemple: http://192.168.1.25:8000
+- Ils n'ont rien a installer, juste un navigateur.
+
+4) Important
+- Votre PC doit rester allume avec la fenetre du script ouverte.
+- Si Windows demande l'autorisation pare-feu, cliquer Autoriser.
+- Les telephones et PC de vos camarades doivent etre sur le meme Wi-Fi que vous.
+
+5) Base de donnees
+- Le projet utilise le fichier db.sqlite3 inclus dans ce dossier.
+- Vos camarades voient les memes donnees en direct si vous utilisez le mode reseau.
+
+6) Si un camarade veut une copie sur son propre PC
+- Envoyez-lui tout le dossier du projet.
+- Il ouvre PackPretAPartager.
+- Il lance 1_Installer.bat puis 2_Lancer_Local.bat.
+- Dans ce cas, il doit seulement avoir Python installe sur son PC.

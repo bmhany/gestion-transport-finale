@@ -1,0 +1,292 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<style>
+@media (max-width: 768px) {
+    .history-card { grid-template-columns: 1fr 1fr !important; }
+    .history-card > div { text-align: left !important; }
+}
+@media (max-width: 480px) {
+    .history-card { grid-template-columns: 1fr !important; }
+}
+/* Modal overlay */
+.rating-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(3px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+.rating-overlay.open { display: flex; }
+.rating-modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    position: relative;
+    animation: modal-in .18s ease;
+}
+@keyframes modal-in {
+    from { transform: translateY(18px); opacity:0; }
+    to   { transform: translateY(0);    opacity:1; }
+}
+.modal-close {
+    position: absolute;
+    top: 16px; right: 18px;
+    background: none; border: none;
+    font-size: 20px; color: var(--muted);
+    cursor: pointer; line-height: 1;
+}
+.modal-close:hover { color: var(--text); }
+/* Star rating widget */
+.star-group { display:flex; flex-direction:row-reverse; gap:6px; }
+.star-group input { display:none; }
+.star-group label {
+    font-size:26px; color:#d1d5db; cursor:pointer;
+    transition: color .12s, transform .12s;
+}
+.star-group label:hover { transform: scale(1.2); }
+.star-group input:checked ~ label,
+.star-group label:hover,
+.star-group label:hover ~ label { color: #f59e0b; }
+.star-row { display:flex; align-items:center; gap:16px; margin-bottom:14px; }
+.star-row .star-label { font-size:13px; font-weight:600; color:var(--muted); width:95px; flex-shrink:0; }
+.modal-submit-btn {
+    width: 100%;
+    margin-top:16px;
+    padding:11px 0;
+    border-radius:12px;
+    border:none;
+    background:linear-gradient(135deg,#a41e1e,#6b1515);
+    color:#fff;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    transition: opacity .15s;
+}
+.modal-submit-btn:hover { opacity:.88; }
+#modal-msg { font-size:13px; font-weight:600; text-align:center; margin-top:10px; min-height:18px; }
+</style>
+
+<header>
+    <h2><i class="fas fa-clock-rotate-left"></i> Historique de mes trajets</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-user-graduate"></i>
+        {{ student_name }}
+    </div>
+</header>
+<main>
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="num">{{ stats_history_total }}</div>
+            <div class="lbl">Trajets effectués</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ stats_reservations_total }}</div>
+            <div class="lbl">Réservations totales</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ student_ratings_count }}</div>
+            <div class="lbl">Avis donnés</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3><i class="fas fa-list"></i> Historique complet de mes déplacements</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+            {% for slot in history_slots %}
+            <div style="display:grid;grid-template-columns:110px 1fr 80px 80px 80px auto auto auto;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;border:1px solid var(--border);background:var(--card);" class="history-card">
+                <div style="font-weight:700;color:var(--text);font-size:13px;">
+                    <i class="fas fa-calendar-day" style="color:var(--muted);margin-right:4px;"></i>{{ slot.date_trajet|date:"d/m/Y" }}
+                </div>
+                <div>
+                    <div style="font-weight:700;color:var(--text);font-size:13px;">{{ slot.ligne_nom }}</div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:2px;"><i class="fas fa-arrows-left-right"></i> {{ slot.sens }}</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:var(--muted);">Départ</div>
+                    <div style="font-weight:700;color:var(--text);font-size:13px;">{{ slot.heure_depart }}</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:var(--muted);">Arrivée</div>
+                    <div style="font-weight:700;color:var(--text);font-size:13px;">{{ slot.heure_arrivee }}</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:var(--muted);">Bus</div>
+                    <div style="font-weight:700;color:var(--text);font-size:13px;">{{ slot.bus }}</div>
+                </div>
+                <div>
+                    <span class="tag tag-resolved"><i class="fas fa-check"></i> {{ slot.status }}</span>
+                </div>
+                <div id="badge-{{ slot.trajet_id }}">
+                    {% if slot.rating_exists %}
+                        <span class="tag tag-pending"><i class="fas fa-star"></i> {{ slot.rating_note_generale }}/5</span>
+                    {% else %}
+                        <span class="tag tag-inactive">—</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <button
+                        id="btn-{{ slot.trajet_id }}"
+                        onclick="openRatingModal('{{ slot.trajet_id }}', '{{ slot.ligne_nom }}', '{{ slot.date_trajet|date:"d/m/Y" }}', {{ slot.rating_note_generale|default:'null' }}, {{ slot.rating_note_bus|default:'null' }}, {{ slot.rating_note_conducteur|default:'null' }})"
+                        style="padding:5px 12px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                        {% if slot.rating_exists %}<i class="fas fa-pen"></i> Modifier{% else %}<i class="fas fa-star"></i> Noter{% endif %}
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div style="text-align:center;color:var(--muted);padding:24px;">Aucun trajet dans l'historique.</div>
+            {% endfor %}
+        </div>
+        {% if history_slots|length == 60 %}
+        <p style="margin-top:12px;color:var(--muted);font-size:12px;">Affichage des 60 derniers trajets.</p>
+        {% endif %}
+    </div>
+</main>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- ── Rating Modal (rendered directly in body, outside all layout containers) ── -->
+<div id="ratingOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);z-index:9999;align-items:center;justify-content:center;">
+    <div class="rating-modal">
+        <button type="button" class="modal-close" id="modal-close-btn">&#10005;</button>
+        <div style="margin-bottom:18px;">
+            <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:4px;">
+                <i class="fas fa-star" style="color:#f59e0b;"></i> Évaluer ce trajet
+            </div>
+            <div id="modal-trip-info" style="font-size:12px;color:var(--muted);"></div>
+        </div>
+        <!-- Note générale -->
+        <div class="star-row">
+            <div class="star-label">Trajet <span style="color:#ef4444;">*</span></div>
+            <div class="star-group">
+                <input type="radio" name="modal-gen" id="modal-gen-5" value="5"><label for="modal-gen-5">&#9733;</label>
+                <input type="radio" name="modal-gen" id="modal-gen-4" value="4"><label for="modal-gen-4">&#9733;</label>
+                <input type="radio" name="modal-gen" id="modal-gen-3" value="3"><label for="modal-gen-3">&#9733;</label>
+                <input type="radio" name="modal-gen" id="modal-gen-2" value="2"><label for="modal-gen-2">&#9733;</label>
+                <input type="radio" name="modal-gen" id="modal-gen-1" value="1"><label for="modal-gen-1">&#9733;</label>
+            </div>
+        </div>
+        <!-- Note bus -->
+        <div class="star-row">
+            <div class="star-label">Bus <span style="font-size:10px;color:var(--muted);">(optionnel)</span></div>
+            <div class="star-group">
+                <input type="radio" name="modal-bus" id="modal-bus-5" value="5"><label for="modal-bus-5">&#9733;</label>
+                <input type="radio" name="modal-bus" id="modal-bus-4" value="4"><label for="modal-bus-4">&#9733;</label>
+                <input type="radio" name="modal-bus" id="modal-bus-3" value="3"><label for="modal-bus-3">&#9733;</label>
+                <input type="radio" name="modal-bus" id="modal-bus-2" value="2"><label for="modal-bus-2">&#9733;</label>
+                <input type="radio" name="modal-bus" id="modal-bus-1" value="1"><label for="modal-bus-1">&#9733;</label>
+            </div>
+        </div>
+        <!-- Note conducteur -->
+        <div class="star-row">
+            <div class="star-label">Conducteur <span style="font-size:10px;color:var(--muted);">(optionnel)</span></div>
+            <div class="star-group">
+                <input type="radio" name="modal-cond" id="modal-cond-5" value="5"><label for="modal-cond-5">&#9733;</label>
+                <input type="radio" name="modal-cond" id="modal-cond-4" value="4"><label for="modal-cond-4">&#9733;</label>
+                <input type="radio" name="modal-cond" id="modal-cond-3" value="3"><label for="modal-cond-3">&#9733;</label>
+                <input type="radio" name="modal-cond" id="modal-cond-2" value="2"><label for="modal-cond-2">&#9733;</label>
+                <input type="radio" name="modal-cond" id="modal-cond-1" value="1"><label for="modal-cond-1">&#9733;</label>
+            </div>
+        </div>
+        <button type="button" class="modal-submit-btn" id="modal-submit-btn">
+            <i class="fas fa-paper-plane"></i> Envoyer mon évaluation
+        </button>
+        <div id="modal-msg"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var _currentTrajetId = null;
+    var overlay = document.getElementById('ratingOverlay');
+
+    function openRatingModal(trajetId, ligne, date, noteGen, noteBus, noteCond) {
+        _currentTrajetId = trajetId;
+        document.getElementById('modal-trip-info').textContent = ligne + '  ·  ' + date;
+        ['modal-gen', 'modal-bus', 'modal-cond'].forEach(function(name) {
+            document.querySelectorAll('input[name="' + name + '"]').forEach(function(r) { r.checked = false; });
+        });
+        if (noteGen)  { var e1 = document.getElementById('modal-gen-'  + noteGen);  if (e1) e1.checked = true; }
+        if (noteBus)  { var e2 = document.getElementById('modal-bus-'  + noteBus);  if (e2) e2.checked = true; }
+        if (noteCond) { var e3 = document.getElementById('modal-cond-' + noteCond); if (e3) e3.checked = true; }
+        document.getElementById('modal-msg').textContent = '';
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+        _currentTrajetId = null;
+    }
+
+    function getCheckedValue(name) {
+        var el = document.querySelector('input[name="' + name + '"]:checked');
+        return el ? parseInt(el.value) : null;
+    }
+
+    function submitModalRating() {
+        var trajetId = _currentTrajetId;
+        var noteGen  = getCheckedValue('modal-gen');
+        var noteBus  = getCheckedValue('modal-bus');
+        var noteCond = getCheckedValue('modal-cond');
+        var msgEl    = document.getElementById('modal-msg');
+
+        if (!noteGen) {
+            msgEl.textContent = 'La note du trajet est obligatoire.';
+            msgEl.style.color = '#ef4444';
+            return;
+        }
+        msgEl.textContent = '…';
+        msgEl.style.color = 'var(--muted)';
+
+        fetch('{% url "gestion_transport:rate_trajet" %}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ trajet_id: trajetId, note_generale: noteGen, note_bus: noteBus, note_conducteur: noteCond })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                msgEl.textContent = data.created ? '✓ Avis enregistré !' : '✓ Avis mis à jour !';
+                msgEl.style.color = '#16a34a';
+                var badge = document.getElementById('badge-' + trajetId);
+                var btn   = document.getElementById('btn-'   + trajetId);
+                if (badge) badge.innerHTML = '<span class="tag tag-pending"><i class="fas fa-star"></i> ' + data.note_generale + '/5</span>';
+                if (btn)   btn.innerHTML   = '<i class="fas fa-pen"></i> Modifier';
+                setTimeout(function() { closeModal(); }, 1200);
+            } else {
+                msgEl.textContent = data.error || 'Erreur inconnue.';
+                msgEl.style.color = '#ef4444';
+            }
+        })
+        .catch(function(err) {
+            msgEl.textContent = 'Erreur réseau : ' + err.message;
+            msgEl.style.color = '#ef4444';
+        });
+    }
+
+    // Wire up buttons
+    document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+    document.getElementById('modal-submit-btn').addEventListener('click', submitModalRating);
+
+    // Close on backdrop click
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeModal();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+    // Expose openRatingModal globally for inline onclick handlers
+    window.openRatingModal = openRatingModal;
+})();
+</script>
+{% endblock %}

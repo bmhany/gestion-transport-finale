@@ -1,0 +1,45 @@
+{% extends "gestion_transport/base.html" %}
+{% load static %}
+
+{% block title %}Supprimer la station{% endblock %}
+
+{% block body_class %}page-modal-entities{% endblock %}
+
+{% block content %}
+<div class="entity-modal-backdrop">
+    <div class="entity-modal-card">
+        <div class="entity-modal-head">
+            <h2><i class="fas fa-trash"></i> Confirmer la suppression</h2>
+            <p>Êtes-vous sûr de vouloir supprimer cette station ? Cette action est irréversible.</p>
+        </div>
+
+        <div class="entity-confirm-body">
+            <div class="entity-summary-card">
+                <div class="entity-summary-title">
+                    <i class="fas fa-map-marker-alt"></i> {{ station.nom_station }}
+                </div>
+                <ul class="entity-summary-list">
+                    <li>Adresse: {{ station.adresse }}</li>
+                    {% if station.latitude and station.longitude %}
+                        <li>Coordonnées GPS: {{ station.latitude|floatformat:6 }}, {{ station.longitude|floatformat:6 }}</li>
+                    {% else %}
+                        <li>Coordonnées GPS: Non définies</li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <div class="entity-danger-box">
+                <strong>Attention :</strong> La suppression effacera aussi toutes les lignes qui utilisent cette station, ainsi que leurs horaires et affectations associées.
+            </div>
+
+            <form method="post" novalidate class="entity-confirm-form">
+                {% csrf_token %}
+                <div class="form-actions">
+                    <a href="{% url 'gestion_transport:liste_stations' %}">Annuler</a>
+                    <button type="submit" class="entity-danger-btn">Supprimer définitivement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

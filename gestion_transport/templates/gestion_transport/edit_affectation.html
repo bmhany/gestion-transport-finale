@@ -1,0 +1,91 @@
+{% extends "gestion_transport/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - Transport Universitaire{% endblock %}
+
+{% block body_class %}page-modal-entities{% endblock %}
+
+{% block content %}
+<div class="entity-modal-backdrop">
+    <div class="entity-modal-card">
+        <div class="entity-modal-head">
+            <h2><i class="fas fa-edit"></i> {{ title }}</h2>
+            <p>Modifiez l'affectation du bus <strong>{{ affectation.bus.numero_immatriculation }}</strong> à la ligne <strong>{{ affectation.ligne.nom_ligne }}</strong></p>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {{ form.bus.as_hidden }}
+
+            <div class="entity-grid">
+                <div class="form-group">
+                    <label>Bus</label>
+                    <input type="text" value="{{ affectation.bus.numero_immatriculation }}{% if affectation.bus.marque %} - {{ affectation.bus.marque }}{% endif %}" readonly class="form-control">
+                    <small class="helper">Le bus ne peut pas être modifié ici.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.ligne.id_for_label }}">{{ form.ligne.label }}</label>
+                    {{ form.ligne }}
+                    {% if form.ligne.errors %}
+                        <div class="error-text">{{ form.ligne.errors|join:', ' }}</div>
+                    {% endif %}
+                    <small class="helper">La ligne doit avoir au moins un horaire Aller et un horaire Retour.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.conducteur.id_for_label }}">{{ form.conducteur.label }}</label>
+                    {{ form.conducteur }}
+                    {% if form.conducteur.errors %}
+                        <div class="error-text">{{ form.conducteur.errors|join:', ' }}</div>
+                    {% endif %}
+                    <small class="helper">Si vous changez le conducteur d'une affectation existante, une confirmation sera demandée.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.date_debut.id_for_label }}">{{ form.date_debut.label }}</label>
+                    {{ form.date_debut }}
+                    {% if form.date_debut.errors %}
+                        <div class="error-text">{{ form.date_debut.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.date_fin.id_for_label }}">{{ form.date_fin.label }}</label>
+                    {{ form.date_fin }}
+                    {% if form.date_fin.errors %}
+                        <div class="error-text">{{ form.date_fin.errors|join:', ' }}</div>
+                    {% endif %}
+                    <small class="helper">Optionnel — si vide, la date de fin est fixée automatiquement à +1 an.</small>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="error-box">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% if show_conducteur_override_confirm %}
+                <div class="error-box">
+                    <strong>Confirmation requise :</strong> cette affectation a déjà le conducteur {{ current_conducteur_label }}.
+                    Confirmez pour remplacer par {{ requested_conducteur_label }} uniquement sur cette affectation.
+                </div>
+            {% endif %}
+
+            <div class="form-actions">
+                {% if show_conducteur_override_confirm %}
+                    <button type="submit" name="confirm_conducteur_override" value="1">
+                        <i class="fas fa-check"></i> Confirmer le changement de conducteur
+                    </button>
+                {% else %}
+                    <button type="submit">
+                        <i class="fas fa-save"></i> Enregistrer les modifications
+                    </button>
+                {% endif %}
+                <a href="{% url 'gestion_transport:liste_bus_affectations' %}" class="js-popup-cancel" data-popup-cancel="1">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

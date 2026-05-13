@@ -1,0 +1,29 @@
+{% extends 'gestion_transport/base.html' %}
+
+{% block title %}Espace Administrateur - MyCous Transport Universitaire{% endblock %}
+
+{% block page_title %}
+    <div>
+        <h1>Espace Administrateur</h1>
+        <p>Connexion pour les administrateurs</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div id="adminChoice" class="page-panel">
+    <p>Accédez au panneau d'administration pour gérer le système de transport.</p>
+
+    <div class="login-roles u-inline-131">
+        <button class="role-btn" onclick="showAdminLogin()" class="u-inline-132"><i class="fas fa-sign-in-alt"></i> Se connecter</button>
+    </div>
+
+    <div class="form-actions u-inline-133"><button class="btn-cancel" onclick="window.location.href='/';">Retour à l'accueil</button></div>
+</div>
+
+<div id="stepAdmin" class="page-panel hidden">
+    <h2>Connexion administrateur</h2>
+    <div class="form-group"><label>Mot de passe</label><input id="adminPass" type="password" placeholder="••••••"></div>
+    <div class="form-actions"><button class="btn-primary" onclick="loginAdmin()">Se connecter</button><button class="btn-cancel" onclick="backToAdminChoice()">Retour</button></div>
+    <p id="adminErr" class="input-error hidden"></p>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'gestion_transport/base.html' %}
+{% block title %}Accueil - Système de Transport Universitaire{% endblock %}
+{% block content %}
+
+    {% if generic_page %}
+        <div class="page-wrapper">
+            
+            <header class="page-header">
+                {% block page_title %}
+                    <div>
+                        <h1>MyCous Transport Universitaire</h1>
+                        <p>Application de gestion des transports universitaires.</p>
+                    </div>
+                {% endblock %}
+            </header>
+            <main class="page-content">
+               
+            </main>
+        </div>
+
+
+    {% else %}  
+   
+        <div id="loginScreen" class="login-screen">
+            <div class="login-box">
+                <div class="login-brand"><span class="brand-mark">M</span><div><h1>MyCous</h1><p>Transport Universitaire</p></div></div>
+                <div id="step1">
+                    <h2>Connectez-vous</h2>
+                    <div class="login-roles">
+                        <button class="role-btn" type="button" onclick="window.location.href='{% url 'gestion_transport:admin_interface' %}';">
+                            <i class="fas fa-user-shield"></i> Admin
+                        </button>
+                        <button class="role-btn" data-role="student" type="button" onclick="window.location.href='{% url 'gestion_transport:student_interface' %}?t='+Date.now();">
+                            <i class="fas fa-user-graduate"></i> Étudiant
+                        </button>
+                        <button class="role-btn" data-role="driver" type="button" onclick="window.location.href='{% url 'gestion_transport:driver_interface' %}?t='+Date.now();">
+                            <i class="fas fa-id-card"></i> Conducteur
+                        </button>
+                    </div>
+                    <div class="login-footer"><a class="btn btn-primary" href="{% url 'gestion_transport:inscription' %}">S'inscrire</a></div>
+                </div>
+                
+
+    {% endif %}
+{% endblock %}
+
+{% comment %} <script src="{% static 'gestion_transport/app.js' %}?v=7"></script>0 {% endcomment %}

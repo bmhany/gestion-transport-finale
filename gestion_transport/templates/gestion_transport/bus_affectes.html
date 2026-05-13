@@ -1,0 +1,60 @@
+{% extends 'gestion_transport/base.html' %}
+
+{% block title %}Bus affectés - Transport Universitaire{% endblock %}
+
+{% block page_title %}
+    <div>
+        <h1>Bus affectés</h1>
+        <p>Consultez les bus assignés à chaque ligne pour une date donnée.</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="page-panel">
+    <form method="get" class="form-card">
+        <div class="form-group">
+            <label for="ligne_id">Ligne</label>
+            <select id="ligne_id" name="ligne_id">
+                <option value="">Sélectionner une ligne</option>
+                {% for ligne in lignes %}
+                    <option value="{{ ligne.id }}" {% if selected_ligne and ligne.id == selected_ligne.id %}selected{% endif %}>{{ ligne.nom_ligne }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="date">Date</label>
+            <input id="date" type="date" name="date" value="{{ selected_date }}" />
+        </div>
+        <button type="submit">Filtrer</button>
+    </form>
+
+    <div class="table-card">
+        {% if bus_affectes %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bus</th>
+                        <th>Ligne</th>
+                        <th>Date de début</th>
+                        <th>Date de fin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for affectation in bus_affectes %}
+                        <tr>
+                            <td>{{ affectation.bus.numero_immatriculation }}</td>
+                            <td>{{ affectation.ligne.nom_ligne }}</td>
+                            <td>{{ affectation.date_debut }}</td>
+                            <td>{% if affectation.date_fin %}{{ affectation.date_fin }}{% else %}Actif{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="page-panel">
+                <p>Aucune affectation trouvée pour ce filtre.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

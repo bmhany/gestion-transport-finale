@@ -1,0 +1,145 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<header>
+    <h2><i class="fas fa-qrcode"></i> Mes tickets bus</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-user-graduate"></i>
+        {{ student_name }}
+    </div>
+</header>
+<main>
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="num">{{ stats_ticket_count }}</div>
+            <div class="lbl">Tickets actifs</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ stats_used_ticket_count }}</div>
+            <div class="lbl">Tickets utilisés</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ stats_reservations_total }}</div>
+            <div class="lbl">Réservations liées</div>
+        </div>
+    </div>
+
+    <div class="panel student-tickets-panel">
+        <h3><i class="fas fa-ticket"></i> Tickets à présenter au chauffeur</h3>
+        <p class="student-ticket-help">Chaque ticket embarque un code QR fondé sur votre code de réservation. Le chauffeur peut le scanner directement au moment de l’embarquement.</p>
+        <div class="student-ticket-grid">
+            {% for ticket in ticket_cards %}
+            <article class="student-ticket-card">
+                <div class="student-ticket-head">
+                    <div>
+                        <span class="student-ticket-label">{{ ticket.status_label }}</span>
+                        <h4>{{ ticket.ligne_nom }}</h4>
+                    </div>
+                    <span class="tag tag-{{ ticket.status_class }}">{{ ticket.status_label }}</span>
+                </div>
+                <div class="student-ticket-meta">
+                    <span><i class="fas fa-calendar-day"></i> {{ ticket.date_label }}</span>
+                    <span><i class="fas fa-arrows-left-right"></i> {{ ticket.sens }}</span>
+                    <span><i class="fas fa-clock"></i> {{ ticket.heure_depart }} - {{ ticket.heure_arrivee }}</span>
+                    <span><i class="fas fa-bus"></i> Bus {{ ticket.bus }}</span>
+                </div>
+                <div class="student-ticket-qr-block">
+                    <div class="student-ticket-qr" data-qr-value="{{ ticket.qr_payload }}" data-qr-id="ticket-qr-{{ ticket.reservation_id }}" id="ticket-qr-{{ ticket.reservation_id }}"></div>
+                    <div class="student-ticket-code-box">
+                        <span class="student-ticket-code-label">Code réservation</span>
+                        <strong>{{ ticket.ticket_code }}</strong>
+                        <small>Réservé le {{ ticket.reserved_at }}</small>
+                    </div>
+                </div>
+                <div class="student-ticket-actions">
+                    <button type="button" class="student-ticket-copy-btn" onclick="copyTicketCode('{{ ticket.ticket_code }}', this)">
+                        <i class="fas fa-copy"></i> Copier le code
+                    </button>
+                </div>
+            </article>
+            {% empty %}
+            <div class="student-data-empty">Aucun ticket actif pour le moment. Réservez un trajet pour générer votre ticket QR.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel student-tickets-panel used-tickets-panel">
+        <h3><i class="fas fa-clock-rotate-left"></i> Tickets déjà utilisés</h3>
+        <div class="student-ticket-list-compact">
+            {% for ticket in used_ticket_cards %}
+            <div class="student-ticket-row">
+                <div>
+                    <strong>{{ ticket.ligne_nom }}</strong>
+                    <small>{{ ticket.date_label }} · {{ ticket.heure_depart }} - {{ ticket.heure_arrivee }} · Bus {{ ticket.bus }}</small>
+                </div>
+                <code>{{ ticket.ticket_code }}</code>
+            </div>
+            {% empty %}
+            <div class="student-data-empty">Aucun ticket utilisé pour l’instant.</div>
+            {% endfor %}
+        </div>
+    </div>
+</main>
+
+<style>
+.student-tickets-panel { display:grid; gap:16px; }
+.student-ticket-help { color:var(--muted); margin-top:-4px; }
+.student-ticket-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+.student-ticket-card { border:1px solid var(--border); border-radius:20px; background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.92)); padding:18px; display:grid; gap:14px; box-shadow:0 12px 28px rgba(15,23,42,.08); }
+.student-ticket-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.student-ticket-head h4 { margin:4px 0 0; font-size:18px; color:var(--text); }
+.student-ticket-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; }
+.student-ticket-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px; color:var(--text); font-size:13px; }
+.student-ticket-meta span { display:flex; align-items:center; gap:6px; }
+.student-ticket-qr-block { display:grid; grid-template-columns:150px 1fr; gap:16px; align-items:center; }
+.student-ticket-qr { width:150px; min-height:150px; background:#fff; border:1px solid var(--border); border-radius:16px; display:flex; align-items:center; justify-content:center; padding:10px; }
+.student-ticket-code-box { display:grid; gap:6px; }
+.student-ticket-code-box strong { font-size:14px; word-break:break-all; color:var(--text); }
+.student-ticket-code-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; }
+.student-ticket-code-box small { color:var(--muted); }
+.student-ticket-actions { display:flex; justify-content:flex-end; }
+.student-ticket-copy-btn { border:0; border-radius:10px; background:#c62828; color:#fff; padding:10px 14px; font-size:13px; font-weight:700; cursor:pointer; transition:background-color .18s ease; }
+.student-ticket-copy-btn:hover { background:#b71c1c; }
+.student-ticket-copy-btn:focus-visible { outline:2px solid rgba(198,40,40,.28); outline-offset:2px; }
+.student-ticket-list-compact { display:grid; gap:10px; }
+.student-ticket-row { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:12px 14px; border:1px solid var(--border); border-radius:14px; background:var(--card); }
+.student-ticket-row small { display:block; margin-top:4px; color:var(--muted); }
+.student-ticket-row code { padding:6px 10px; border-radius:10px; background:#0f172a; color:#f8fafc; font-size:12px; }
+@media (max-width: 768px) {
+    .student-ticket-meta { grid-template-columns:1fr; }
+    .student-ticket-qr-block { grid-template-columns:1fr; }
+    .student-ticket-qr { width:100%; max-width:180px; }
+    .student-ticket-actions { justify-content:stretch; }
+    .student-ticket-copy-btn { width:100%; }
+    .student-ticket-row { flex-direction:column; align-items:flex-start; }
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function() {
+    document.querySelectorAll('.student-ticket-qr[data-qr-value]').forEach(function(node) {
+        if (!node.dataset.qrValue) {
+            return;
+        }
+        new QRCode(node, {
+            text: node.dataset.qrValue,
+            width: 128,
+            height: 128,
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    });
+})();
+
+function copyTicketCode(ticketCode, button) {
+    navigator.clipboard.writeText(ticketCode).then(function() {
+        var original = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copié';
+        window.setTimeout(function() {
+            button.innerHTML = original;
+        }, 1400);
+    }).catch(function() {
+        alert('Impossible de copier le code du ticket.');
+    });
+}
+</script>
+{% endblock %}

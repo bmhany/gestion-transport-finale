@@ -1,0 +1,74 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<header>
+    <h2><i class="fas fa-user"></i> Mon Profil</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-user-graduate"></i>
+        {{ student_name }}
+    </div>
+</header>
+<main>
+    <div class="panel" style="max-width:520px;">
+        <div style="display:flex;align-items:center;gap:24px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border);">
+            <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#a41e1e,#6b1515);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-user-graduate" style="font-size:2rem;color:#fff;"></i>
+            </div>
+            <div>
+                <div style="font-size:1.3rem;font-weight:800;color:var(--text);">{{ student.prenom }} {{ student.nom }}</div>
+                <div style="color:var(--muted);font-size:13px;margin-top:4px;"><i class="fas fa-id-badge"></i> {{ student.student_number }}</div>
+            </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+                <span style="color:var(--muted);font-size:13px;font-weight:600;">Matricule</span>
+                <span style="color:var(--text);font-weight:700;">{{ student.student_number }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+                <span style="color:var(--muted);font-size:13px;font-weight:600;">Nom complet</span>
+                <span style="color:var(--text);font-weight:700;">{{ student.prenom }} {{ student.nom }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+                <span style="color:var(--muted);font-size:13px;font-weight:600;">Email</span>
+                <span style="color:var(--text);font-weight:700;">{{ student.email|default:"—" }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+                <span style="color:var(--muted);font-size:13px;font-weight:600;">Téléphone</span>
+                <span style="color:var(--text);font-weight:700;">{{ student.telephone|default:"—" }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+                <span style="color:var(--muted);font-size:13px;font-weight:600;">Date d'inscription</span>
+                <span style="color:var(--text);font-weight:700;">{{ student.date_inscription|date:"d/m/Y"|default:"—" }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;">
+                <span style="color:var(--muted);font-size:13px;font-weight:600;">Ligne principale</span>
+                <span style="color:var(--text);font-weight:700;">
+                    {% if student_ligne %}{{ student_ligne.nom_ligne }}{% else %}—{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel" style="max-width:520px;">
+        <h3><i class="fas fa-chart-bar"></i> Mes statistiques</h3>
+        <div class="stat-grid">
+            <div class="stat">
+                <div class="num">{{ stats_active_subscriptions }}</div>
+                <div class="lbl">Abonnements actifs</div>
+            </div>
+            <div class="stat">
+                <div class="num">{{ stats_reservations_total }}</div>
+                <div class="lbl">Réservations totales</div>
+            </div>
+            <div class="stat">
+                <div class="num">{{ stats_history_total }}</div>
+                <div class="lbl">Trajets effectués</div>
+            </div>
+            <div class="stat">
+                <div class="num">{{ student_ratings_count }}</div>
+                <div class="lbl">Avis donnés</div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

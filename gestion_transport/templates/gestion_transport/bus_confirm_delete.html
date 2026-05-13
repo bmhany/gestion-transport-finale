@@ -1,0 +1,42 @@
+{% extends "gestion_transport/base.html" %}
+{% load static %}
+
+{% block title %}Supprimer le bus{% endblock %}
+
+{% block body_class %}page-modal-entities{% endblock %}
+
+{% block content %}
+<div class="entity-modal-backdrop">
+    <div class="entity-modal-card">
+        <div class="entity-modal-head">
+            <h2><i class="fas fa-trash"></i> Confirmer la suppression</h2>
+            <p>Êtes-vous sûr de vouloir supprimer ce bus ? Cette action est irréversible.</p>
+        </div>
+
+        <div class="entity-confirm-body">
+            <div class="entity-summary-card">
+                <div class="entity-summary-title">
+                    <i class="fas fa-bus"></i> {{ bus.numero_immatriculation }}
+                </div>
+                <ul class="entity-summary-list">
+                    <li>Marque: {{ bus.marque }}</li>
+                    <li>Capacité: {{ bus.capacite }} places</li>
+                    <li>Mise en service: {{ bus.date_mise_service|date:"d/m/Y" }}</li>
+                </ul>
+            </div>
+
+            <div class="entity-danger-box">
+                <strong>Attention :</strong> Toutes les affectations liées à ce bus seront également supprimées.
+            </div>
+
+            <form method="post" novalidate class="entity-confirm-form">
+                {% csrf_token %}
+                <div class="form-actions">
+                    <a href="{% url 'gestion_transport:liste_bus_affectations' %}">Annuler</a>
+                    <button type="submit" class="entity-danger-btn">Supprimer définitivement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

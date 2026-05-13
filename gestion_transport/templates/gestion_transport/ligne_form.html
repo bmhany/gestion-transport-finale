@@ -1,0 +1,214 @@
+{% extends 'gestion_transport/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Transport Universitaire{% endblock %}
+
+{% block page_title %}
+    <div></div>
+{% endblock %}
+
+{% block body_class %}page-ligne-form{% endblock %}
+
+{% block content %}
+<div class="ligne-modal-backdrop">
+    <div class="ligne-modal-card">
+        <div class="ligne-modal-head">
+            <h2>{{ title }}</h2>
+            <p>Créez ou modifiez une ligne de transport universitaire.</p>
+            <div class="ligne-hero-strip">
+                <div class="hero-chip hero-chip-soft">
+                    <span class="hero-chip-label">Mode</span>
+                    <strong>{% if line_summary %}{{ line_summary.mode_label }}{% else %}Création{% endif %}</strong>
+                </div>
+                <div class="hero-chip">
+                    <span class="hero-chip-label">Stations</span>
+                    <strong>{% if line_summary %}{{ line_summary.station_count }}{% else %}À définir{% endif %}</strong>
+                </div>
+                <div class="hero-chip">
+                    <span class="hero-chip-label">Horaires</span>
+                    <strong>{% if line_summary %}{{ line_summary.horaire_count }}{% else %}À définir{% endif %}</strong>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="form-quick-nav" aria-label="Navigation rapide du formulaire">
+                <a href="#line-info-section">Informations</a>
+                <a href="#stations-section">Stations</a>
+                <a href="#horaires-section">Horaires</a>
+            </div>
+
+            <div class="form-section">
+                <h3>Contraintes de création</h3>
+                <p>Pour valider la création d'une ligne, les conditions suivantes sont obligatoires :</p>
+                <ul>
+                    <li>Au moins 2 stations valides avec un ordre (départ et arrivée).</li>
+                    <li>Les horaires se gèrent ensuite depuis le bouton <strong>Horaires</strong> sur la ligne créée.</li>
+                </ul>
+                <p>Le nom de la ligne est généré automatiquement à partir de la station de départ et de la station d'arrivée.</p>
+            </div>
+
+            <div class="form-section" id="line-info-section">
+                <h3>Informations de la ligne</h3>
+                {% for field in form %}
+                    <p>
+                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                        {{ field }}
+                        {% if field.name == 'nom_ligne' %}
+                            <small class="form-hint">Généré automatiquement à partir du nom de la station de départ et d'arrivée. Vous pouvez le modifier manuellement.</small>
+                            {% if field.errors %}
+                                <small class="form-hint error-text">Ce nom de ligne existe déjà. Veuillez choisir un autre nom.</small>
+                            {% endif %}
+                        {% endif %}
+                        {% if field.errors %}
+                            <span class="error-text">{{ field.errors|join:', ' }}</span>
+                        {% endif %}
+                    </p>
+                {% endfor %}
+            </div>
+
+            <div class="form-section" id="stations-section">
+                <h3>Stations de la ligne</h3>
+                <p>Sélectionnez les stations dans l'ordre: départ (ordre 1), arrêts intermédiaires, arrivée (ordre max).</p>
+                {% if ligne_station_formset.non_form_errors %}
+                    {% for err in ligne_station_formset.non_form_errors %}
+                        <div class="error-text">{{ err }}</div>
+                    {% endfor %}
+                {% endif %}
+                {{ ligne_station_formset.management_form }}
+
+                <div class="station-toolbar">
+                    <button type="button" id="addStationRowBtn" class="add-station-btn">+ Ajouter une station</button>
+                    <span class="station-toolbar-help">Ajoutez toutes les stations desservies par cette ligne.</span>
+                </div>
+
+                <div id="stationRowsContainer">
+                    {% for station_form in ligne_station_formset %}
+                    <div class="station-row" data-form-row>
+                        {% for hidden in station_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+
+                        <div class="station-row-content">
+                            <div class="station-form-group">
+                                <label>{{ station_form.station.label }}</label>
+                                {{ station_form.station }}
+                            </div>
+                            <div class="station-form-group">
+                                <label>{{ station_form.ordre.label }}</label>
+                                {{ station_form.ordre }}
+                            </div>
+                            <div class="station-form-group delete-field-hidden">
+                                <label>{{ station_form.DELETE.label }}</label>
+                                {{ station_form.DELETE }}
+                            </div>
+                            <button type="button" class="remove-station-btn" data-remove-station-row>Retirer</button>
+                        </div>
+
+                        {% if station_form.non_field_errors %}
+                            <div class="error-text">{{ station_form.non_field_errors }}</div>
+                        {% endif %}
+                        {% for field in station_form.visible_fields %}
+                            {% if field.errors %}
+                                <div class="error-text">{{ field.label }}: {{ field.errors|join:', ' }}</div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <template id="stationEmptyFormTemplate">
+                    <div class="station-row" data-form-row>
+                        {% for hidden in ligne_station_formset.empty_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+
+                        <div class="station-row-content">
+                            <div class="station-form-group">
+                                <label>{{ ligne_station_formset.empty_form.station.label }}</label>
+                                {{ ligne_station_formset.empty_form.station }}
+                            </div>
+                            <div class="station-form-group">
+                                <label>{{ ligne_station_formset.empty_form.ordre.label }}</label>
+                                {{ ligne_station_formset.empty_form.ordre }}
+                            </div>
+                            <div class="station-form-group delete-field-hidden">
+                                <label>{{ ligne_station_formset.empty_form.DELETE.label }}</label>
+                                {{ ligne_station_formset.empty_form.DELETE }}
+                            </div>
+                            <button type="button" class="remove-station-btn" data-remove-station-row>Retirer</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="form-section" id="horaires-section">
+                <h3>Horaires de la ligne</h3>
+                <p>La gestion des horaires suit maintenant le parcours dédié via le bouton <strong>Horaires</strong> dans la liste des lignes.</p>
+
+                {% if horaires_groupes %}
+                <div class="lf-horaires-table-wrap">
+                    <h4 class="lf-sub-title"><i class="fas fa-calendar-days"></i> Vue par jour</h4>
+                    <table class="lf-horaires-table">
+                        <thead>
+                            <tr>
+                                <th>Jour</th>
+                                <th>{{ sens_label_aller }}</th>
+                                <th>{{ sens_label_retour }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for jour in horaires_groupes %}
+                            <tr>
+                                <td><strong>{{ jour.jour_label }}</strong></td>
+                                <td>
+                                    {% for h in jour.aller %}
+                                        <div class="lf-day-slot"><span class="lf-day-time">{{ h.heure_depart }} → {{ h.heure_arrivee }}</span></div>
+                                    {% empty %}
+                                        <span class="lf-empty-cell">—</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% for h in jour.retour %}
+                                        <div class="lf-day-slot"><span class="lf-day-time">{{ h.heure_depart }} → {{ h.heure_arrivee }}</span></div>
+                                    {% empty %}
+                                        <span class="lf-empty-cell">—</span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="lf-empty-row">Aucun horaire défini</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <div class="lf-horaires-add-wrap">
+                    {% if ligne_id %}
+                    <h4 class="lf-sub-title"><i class="fas fa-arrow-up-right-from-square"></i> Gérer les horaires</h4>
+                    <p class="lf-section-note">Utilisez l'écran dédié pour ajouter, modifier ou supprimer les paires aller/retour de cette ligne.</p>
+                    <div class="horaire-toolbar">
+                        <a class="add-horaire-btn" href="{% url 'gestion_transport:horaires_ligne_detail' ligne_id %}">
+                            <i class="fas fa-clock"></i> Ouvrir la gestion des horaires
+                        </a>
+                    </div>
+                    {% else %}
+                    <h4 class="lf-sub-title"><i class="fas fa-circle-info"></i> Étape suivante</h4>
+                    <p class="lf-section-note">Enregistrez d'abord la ligne et ses stations. Vous pourrez ensuite ouvrir l'écran <strong>Horaires</strong> pour ajouter les paires aller/retour.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit">Enregistrer</button>
+        </form>
+
+        <div class="button-row form-actions-row">
+            <a class="btn js-popup-cancel" href="{% url 'gestion_transport:admin_dashboard' %}">Retour au tableau de bord</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

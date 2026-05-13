@@ -1,0 +1,89 @@
+{% extends "gestion_transport/base.html" %}
+
+{% block title %}{{ title }} - Transport Universitaire{% endblock %}
+
+{% block content %}
+<div class="modal-overlay">
+    <div class="modal-wrapper">
+        <div class="modal-card">
+            <div class="panel-heading">
+                <div>
+                    <h2><i class="fas fa-pen"></i> {{ title }}</h2>
+                    <p>Bus {{ trajet.bus.numero_immatriculation }} - {{ trajet.ligne.nom_ligne }}</p>
+                </div>
+            </div>
+
+            <form method="post" class="form-card-body" novalidate>
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label>Bus</label>
+                    <input type="text" value="{{ trajet.bus.numero_immatriculation }} - {{ trajet.bus.marque|default:'Non specifiee' }}" readonly class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Ligne</label>
+                    <input type="text" value="{{ trajet.ligne.nom_ligne }}" readonly class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.horaire.id_for_label }}">{{ form.horaire.label }}</label>
+                    {{ form.horaire }}
+                    {% if form.horaire.errors %}
+                        <ul class="error-list">
+                            {% for error in form.horaire.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.date_trajet.id_for_label }}">{{ form.date_trajet.label }}</label>
+                        {{ form.date_trajet }}
+                        {% if form.date_trajet.errors %}
+                            <ul class="error-list">
+                                {% for error in form.date_trajet.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.retard_minutes.id_for_label }}">{{ form.retard_minutes.label }}</label>
+                        {{ form.retard_minutes }}
+                        {% if form.retard_minutes.errors %}
+                            <ul class="error-list">
+                                {% for error in form.retard_minutes.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if form.non_field_errors %}
+                    <ul class="error-list">
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Enregistrer les modifications
+                    </button>
+                    <a href="{% url 'gestion_transport:bus_trajets' bus.id %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Styles moved to static/gestion_transport/style.css -->
+{% endblock %}

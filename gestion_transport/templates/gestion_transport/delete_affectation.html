@@ -1,0 +1,61 @@
+{% extends "gestion_transport/base.html" %}
+
+{% block title %}{{ title }} - Transport Universitaire{% endblock %}
+
+{% block content %}
+<div class="modal-overlay">
+    <div class="modal-wrapper">
+        <div class="modal-card">
+            <div class="panel-heading">
+                <div>
+                    <h2><i class="fas fa-exclamation-triangle"></i> {{ title }}</h2>
+                    <p>Confirmer la suppression de l'affectation</p>
+                </div>
+            </div>
+
+            <div class="form-card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Attention !</strong> Vous êtes sur le point de supprimer une affectation.
+                </div>
+
+                <div class="confirmation-details">
+                    <h3>Détails de l'affectation à supprimer :</h3>
+                    <ul>
+                        <li><strong>Bus :</strong> {{ affectation.bus.numero_immatriculation }} - {{ affectation.bus.marque }}</li>
+                        <li><strong>Ligne :</strong> {{ affectation.ligne.nom_ligne }}</li>
+                        <li><strong>Période :</strong>
+                            Du {{ affectation.date_debut|date:"d/m/Y" }}
+                            {% if affectation.date_fin %}
+                                au {{ affectation.date_fin|date:"d/m/Y" }}
+                            {% else %}
+                                (en cours)
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Information :</strong> Cette action est irréversible. Le bus ne sera plus affecté à cette ligne pour cette période.
+                </div>
+
+                <form method="post" novalidate id="delete-affectation-form">
+                    {% csrf_token %}
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Confirmer la suppression
+                        </button>
+                        <a href="{% url 'gestion_transport:liste_bus_affectations'  %}" class="btn btn-secondary" onclick="if (window.parent && window.parent !== window && typeof window.parent.closeFormPopup === 'function') { window.parent.closeFormPopup(); return false; }">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Styles moved to static/gestion_transport/style.css -->
+{% endblock %}

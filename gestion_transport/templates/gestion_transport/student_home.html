@@ -1,0 +1,59 @@
+{% extends 'gestion_transport/base.html' %}
+{% block body_class %}page-student-home{% endblock %}
+{% block content %}
+<div id="appLayout">
+    <aside>
+        <div class="sidebar-logo">
+            <i class="fas fa-bus"></i>
+            <span>MyCous</span>
+        </div>
+        <nav>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}" href="{% url 'gestion_transport:student_dashboard' %}">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Tableau de Bord</span>
+            </a>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_trips' %}active{% endif %}" href="{% url 'gestion_transport:student_trips' %}">
+                <i class="fas fa-calendar-day"></i>
+                <span>Trajets du jour</span>
+            </a>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_history' %}active{% endif %}" href="{% url 'gestion_transport:student_history' %}">
+                <i class="fas fa-clock-rotate-left"></i>
+                <span>Historique</span>
+            </a>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_subscription' %}active{% endif %}" href="{% url 'gestion_transport:student_subscription' %}">
+                <i class="fas fa-id-card"></i>
+                <span>Abonnement</span>
+            </a>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_tickets' %}active{% endif %}" href="{% url 'gestion_transport:student_tickets' %}">
+                <i class="fas fa-qrcode"></i>
+                <span>Mes tickets</span>
+            </a>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_notifications' %}active{% endif %}" href="{% url 'gestion_transport:student_notifications' %}">
+                <i class="fas fa-bell"></i>
+                <span>Notifications</span>
+            </a>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_location' %}active{% endif %}" href="{% url 'gestion_transport:student_location' %}">
+                <i class="fas fa-location-crosshairs"></i>
+                <span>Localisation</span>
+            </a>
+            <a class="nav-btn {% if request.resolver_match.url_name == 'student_profile' %}active{% endif %}" href="{% url 'gestion_transport:student_profile' %}">
+                <i class="fas fa-user"></i>
+                <span>Profil</span>
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <button onclick="toggleDark(this)">
+                <i class="fas fa-moon"></i>
+                <span>Mode Sombre</span>
+            </button>
+            <button type="button" onclick="window.location.href='/logout/'">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Déconnexion</span>
+            </button>
+        </div>
+    </aside>
+    <div class="main-col">
+        {% block student_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

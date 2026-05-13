@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCD - Système de Transport Universitaire</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</head>
+<body>
+    <h1>Modèle Conceptuel de Données</h1>
+    <h2>Système de Gestion du Transport Universitaire</h2>
+
+    <div class="mermaid">
+graph TD
+    %% Entités
+    ETUDIANT[ETUDIANT<br/>id_etudiant<br/>nom<br/>prenom<br/>email<br/>telephone<br/>date_inscription]
+    BUS[BUS<br/>id_bus<br/>numero_immatriculation<br/>capacite<br/>marque<br/>date_mise_service]
+    LIGNE[LIGNE<br/>id_ligne<br/>nom_ligne<br/>description<br/>distance_km]
+    STATION[STATION<br/>id_station<br/>nom_station<br/>adresse<br/>latitude<br/>longitude]
+    HORAIRE[HORAIRE<br/>id_horaire<br/>id_ligne<br/>jour_semaine<br/>heure_depart<br/>heure_arrivee]
+    AEL[AFFECTATION_ETUDIANT_LIGNE<br/>id_affectation_etudiant<br/>id_etudiant<br/>id_ligne<br/>date_debut<br/>date_fin]
+    ABL[AFFECTATION_BUS_LIGNE<br/>id_affectation_bus<br/>id_bus<br/>id_ligne<br/>date_debut<br/>date_fin]
+    TRAJET[TRAJET<br/>id_trajet<br/>id_bus<br/>id_ligne<br/>id_horaire<br/>date_trajet<br/>retard_minutes]
+    INCIDENT[INCIDENT<br/>id_incident<br/>id_trajet<br/>description<br/>date_heure_incident<br/>type_incident]
+
+    %% Associations
+    S_ABONNE_HISTORIQUE{s_abonne_historique<br/>1,N - 1,N}
+    EST_AFFECTE_HISTORIQUE{est_affecte_historique<br/>1,N - 1,N}
+    A{a<br/>1,N - 1,1}
+    DESSERT{dessert<br/>1,N - 1,N}
+    UTILISE{utilise<br/>1,1 - 1,1}
+    SUR{sur<br/>1,1 - 1,1}
+    A_H{a<br/>1,1 - 1,1}
+    A_I{a<br/>1,1 - 0,N}
+
+    %% Relations
+    ETUDIANT --> S_ABONNE_HISTORIQUE
+    S_ABONNE_HISTORIQUE --> AEL
+    AEL --> LIGNE
+
+    BUS --> EST_AFFECTE_HISTORIQUE
+    EST_AFFECTE_HISTORIQUE --> ABL
+    ABL --> LIGNE
+
+    LIGNE --> A
+    A --> HORAIRE
+
+    LIGNE --> DESSERT
+    DESSERT --> STATION
+
+    TRAJET --> UTILISE
+    UTILISE --> BUS
+
+    TRAJET --> SUR
+    SUR --> LIGNE
+
+    TRAJET --> A_H
+    A_H --> HORAIRE
+
+    TRAJET --> A_I
+    A_I --> INCIDENT
+    </div>
+
+    <h3>Explication du modèle</h3>
+    <ul>
+        <li><strong>ETUDIANT</strong> : Représente les étudiants inscrits au système.</li>
+        <li><strong>BUS</strong> : Les véhicules de transport avec leur capacité.</li>
+        <li><strong>LIGNE</strong> : Les parcours de transport.</li>
+        <li><strong>STATION</strong> : Les arrêts sur les lignes.</li>
+        <li><strong>HORAIRE</strong> : Les plannings par ligne et jour.</li>
+        <li><strong>AFFECTATION_ETUDIANT_LIGNE</strong> : Historique des abonnements des étudiants aux lignes.</li>
+        <li><strong>AFFECTATION_BUS_LIGNE</strong> : Historique des affectations des bus aux lignes.</li>
+        <li><strong>TRAJET</strong> : Les passages effectifs des bus.</li>
+        <li><strong>INCIDENT</strong> : Les problèmes survenus lors des trajets.</li>
+    </ul>
+
+    <p>Pour sauvegarder ce diagramme en image, faites un clic droit sur le diagramme et choisissez "Enregistrer l'image sous..." ou utilisez les outils de capture d'écran de votre navigateur.</p>
+</body>
+</html>

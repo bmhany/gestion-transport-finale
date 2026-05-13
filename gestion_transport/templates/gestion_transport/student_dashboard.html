@@ -1,0 +1,225 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<header>
+    <h2>Tableau de Bord Étudiant</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-user-graduate"></i>
+        Étudiant - {{ student_name }}
+    </div>
+</header>
+<main class="student-dashboard-page">
+    <div class="panel student-dashboard-hero">
+        <div class="student-dashboard-hero-head dashboard-summary-spaced">
+            <div class="dashboard-summary-left">
+                <span class="student-dashboard-eyebrow">Résumé du jour</span>
+                <h3><i class="fas fa-star"></i> Bonjour {{ student_name }}</h3>
+                <p class="student-dashboard-subtitle">Accédez rapidement aux actions principales et gardez un oeil sur vos trajets importants.</p>
+            </div>
+            <div class="student-dashboard-status dashboard-summary-status">
+                <span class="tag tag-active"><i class="fas fa-check-circle"></i> Compte actif</span>
+                <small>Mise à jour en temps réel</small>
+            </div>
+        </div>
+        <div class="student-quick-actions">
+            <a class="student-action-card primary" href="{% url 'gestion_transport:student_trips' %}">
+                <span class="student-action-icon"><i class="fas fa-ticket"></i></span>
+                <span class="student-action-content">
+                    <strong>Réserver un trajet</strong>
+                    <small>Voir les créneaux disponibles aujourd’hui</small>
+                </span>
+                <span class="student-action-arrow"><i class="fas fa-arrow-right"></i></span>
+            </a>
+            <a class="student-action-card subscription" href="{% url 'gestion_transport:student_subscription' %}">
+                <span class="student-action-icon"><i class="fas fa-id-card"></i></span>
+                <span class="student-action-content">
+                    <strong>Gérer mon abonnement</strong>
+                    <small>{{ stats_active_subscriptions }} abonnement(s) actif(s)</small>
+                </span>
+                <span class="student-action-badge">{{ stats_active_subscriptions }}</span>
+            </a>
+            <a class="student-action-card alerts" href="{% url 'gestion_transport:student_notifications' %}">
+                <span class="student-action-icon"><i class="fas fa-bell"></i></span>
+                <span class="student-action-content">
+                    <strong>Voir les alertes</strong>
+                    <small>{{ notifications_count }} alerte(s), dont {{ urgent_alert_count }} incident(s)</small>
+                </span>
+                <span class="student-action-badge {% if urgent_alert_count %}urgent{% endif %}">{{ notifications_count }}</span>
+            </a>
+        </div>
+        <div class="student-next-compact">
+            <div class="student-next-compact-label"><i class="fas fa-forward"></i> Mon prochain trajet</div>
+            {% if next_upcoming_slot %}
+                <div class="student-next-compact-content">
+                    <strong>{{ next_upcoming_slot.ligne_nom }}</strong>
+                    <span>{{ next_upcoming_slot.sens }}</span>
+                    <span>{{ next_upcoming_slot.heure_depart }} - {{ next_upcoming_slot.heure_arrivee }}</span>
+                    <span>Bus {{ next_upcoming_slot.bus }}</span>
+                </div>
+            {% else %}
+                <div class="student-next-compact-content muted">Aucun trajet réservé à venir aujourd'hui.</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="stat-grid student-dashboard-metrics">
+        <div class="stat">
+            <div class="stat-icon"><i class="fas fa-id-card"></i></div>
+            <div class="stat-copy">
+                <div class="num">{{ stats_active_subscriptions }}</div>
+                <div class="lbl">Abonnements actifs</div>
+            </div>
+        </div>
+        <div class="stat">
+            <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+            <div class="stat-copy">
+                <div class="num">{{ stats_upcoming_today }}</div>
+                <div class="lbl">Trajets à venir aujourd'hui</div>
+            </div>
+        </div>
+        <div class="stat">
+            <div class="stat-icon"><i class="fas fa-ticket"></i></div>
+            <div class="stat-copy">
+                <div class="num">{{ available_slots_count }}</div>
+                <div class="lbl">Créneaux encore réservables</div>
+            </div>
+        </div>
+        <div class="stat">
+            <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+            <div class="stat-copy">
+                <div class="num">{{ stats_reservations_total }}</div>
+                <div class="lbl">Réservations totales</div>
+            </div>
+        </div>
+        <div class="stat">
+            <div class="stat-icon"><i class="fas fa-clock-rotate-left"></i></div>
+            <div class="stat-copy">
+                <div class="num">{{ stats_history_total }}</div>
+                <div class="lbl">Trajets dans l'historique</div>
+            </div>
+        </div>
+    </div>
+    <div class="student-dashboard-sections">
+        <section class="panel student-dashboard-panel">
+            <div class="student-panel-heading">
+                <div>
+                    <h3><i class="fas fa-clock"></i> Mes trajets réservés aujourd'hui</h3>
+                    <p class="student-panel-subtitle">Retrouvez en un coup d'oeil vos réservations confirmées pour la journée.</p>
+                </div>
+                <span class="student-panel-meta">{{ stats_upcoming_today }}</span>
+            </div>
+            <div class="student-cards-list" id="dashboard-reserved-tbody">
+                {% for slot in upcoming_slots %}
+                <div class="student-data-card" id="dashboard-row-{{ slot.slot_key }}">
+                    <div class="student-data-cell">
+                        <div class="student-data-eyebrow">Ligne</div>
+                        <div class="student-data-value">{{ slot.ligne_nom }}</div>
+                    </div>
+                    <div class="student-data-cell">
+                        <div class="student-data-eyebrow">Sens</div>
+                        <div class="student-data-value muted">{{ slot.sens }}</div>
+                    </div>
+                    <div class="student-data-cell">
+                        <div class="student-data-eyebrow">Heure</div>
+                        <div class="student-data-value">{{ slot.heure_depart }} - {{ slot.heure_arrivee }}</div>
+                    </div>
+                    <div class="student-data-cell">
+                        <div class="student-data-eyebrow">Bus</div>
+                        <div class="student-data-value">{{ slot.bus }}</div>
+                    </div>
+                    <div class="student-data-actions" id="dashboard-reserved-status-{{ slot.slot_key }}">
+                        <span class="tag tag-active">Réservation confirmée</span>
+                    </div>
+                    <div class="student-data-actions" id="dashboard-reserved-action-{{ slot.slot_key }}">
+                        <button
+                            type="button"
+                            class="btn-cancel"
+                            style="padding:8px 14px;border:none;border-radius:10px;"
+                            onclick="cancelDashboardSlot('{{ slot.ligne_id }}', '{{ slot.horaire_id }}', '{{ slot.sens_code }}', '{{ slot.slot_key }}')">
+                            <i class="fas fa-xmark"></i> Annuler
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div id="dashboard-reserved-empty" class="student-data-empty">Aucun trajet réservé aujourd'hui.</div>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="panel student-dashboard-panel student-dashboard-alerts-panel">
+            <div class="student-panel-heading">
+                <div>
+                    <h3><i class="fas fa-bell"></i> Alertes récentes sur vos lignes</h3>
+                    <p class="student-panel-subtitle">Incidents et retards importants sur les lignes que vous suivez.</p>
+                </div>
+                <span class="student-panel-meta {% if urgent_alert_count %}urgent{% endif %}">{{ notifications_count }}</span>
+            </div>
+            <div class="student-alert-list">
+                {% for item in notifications_feed|slice:":4" %}
+                    <article class="student-alert-item">
+                        <span class="tag {% if item.type == 'incident' %}tag-urgent{% else %}tag-pending{% endif %}">
+                            {% if item.type == 'incident' %}<i class="fas fa-triangle-exclamation"></i> Incident{% else %}<i class="fas fa-clock"></i> Retard{% endif %}
+                        </span>
+                        <div>
+                            <strong>{{ item.title }} — {{ item.line }}</strong>
+                            <p>{{ item.message|truncatechars:85 }}</p>
+                            <small>{{ item.when|date:"d/m/Y H:i" }}</small>
+                        </div>
+                    </article>
+                {% empty %}
+                    <p class="u-inline-164">Aucune alerte récente sur vos lignes.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+function renderDashboardCancelButton(ligneId, horaireId, sens, slotKey) {
+    return `<button type="button" class="btn-cancel" style="padding:8px 14px;border:none;border-radius:10px;" onclick="cancelDashboardSlot('${ligneId}', '${horaireId}', '${sens}', '${slotKey}')"><i class="fas fa-xmark"></i> Annuler</button>`;
+}
+
+function cancelDashboardSlot(ligneId, horaireId, sens, slotKey) {
+    const actionCell = document.getElementById('dashboard-reserved-action-' + slotKey);
+    const statusCell = document.getElementById('dashboard-reserved-status-' + slotKey);
+
+    if (actionCell) {
+        actionCell.innerHTML = '<span style="color:var(--muted);font-size:12px;">Annulation...</span>';
+    }
+
+    fetch('{% url "gestion_transport:cancel_reservation_trajet" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            ligne_id: ligneId,
+            horaire_id: horaireId,
+            sens: sens
+        })
+    })
+    .then(function(response) {
+        return response.json().then(function(data) {
+            return { ok: response.ok, data: data };
+        });
+    })
+    .then(function(result) {
+        if (!result.ok || !result.data.success) {
+            throw new Error(result.data.error || result.data.message || 'Annulation impossible.');
+        }
+
+        if (statusCell) {
+            statusCell.innerHTML = '<span class="tag tag-pending">Disponible</span>';
+        }
+        window.setTimeout(function() {
+            window.location.reload();
+        }, 400);
+    })
+    .catch(function(error) {
+        alert(error.message);
+        if (actionCell) {
+            actionCell.innerHTML = renderDashboardCancelButton(ligneId, horaireId, sens, slotKey);
+        }
+    });
+}
+
+</script>
+{% endblock %}

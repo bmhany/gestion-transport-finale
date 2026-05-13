@@ -1,0 +1,313 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des Bus et Affectations - Transport Universitaire</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'gestion_transport/style.css' %}">
+</head>
+<body class="page-liste-bus-affectations" data-dark="0"
+      data-login-url="{% url 'gestion_transport:admin_login' %}"
+      data-logout-url="{% url 'gestion_transport:admin_logout' %}">
+<div id="appLayout" class="container-fluid px-0">
+    {% csrf_token %}
+    {% include 'gestion_transport/_admin_sidebar.html' with active_nav='bus' %}
+
+    <div class="main-col d-flex flex-column">
+        <header class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h2><i class="fas fa-bus page-title-icon"></i> Liste des Bus et Affectations</h2>
+            <div class="header-actions d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+                {% comment %} <a href="{% url 'gestion_transport:add_ligne' %}" class="btn-add">
+                    <i class="fas fa-route"></i> Ajouter une ligne
+                </a> {% endcomment %}
+                <button type="button" class="btn-add" onclick="openFormPopup('{% url 'gestion_transport:add_bus' %}', 'Ajouter un bus', 'fas fa-bus')">
+                    <i class="fas fa-plus"></i> Ajouter un bus
+                </button>
+                <div class="user-badge badge-admin">
+                    <i class="fas fa-user-shield"></i> Administrateur
+                </div>
+            </div>
+        </header>
+
+        {% if messages %}
+            <div class="alert-list">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <main>
+            <!-- ── STATS ROW ── -->
+            <div class="stats-row">
+                <a href="?{% if selected_date %}date={{ selected_date }}&{% endif %}{% if selected_marque %}marque={{ selected_marque }}&{% endif %}{% if selected_capacite_min %}capacite_min={{ selected_capacite_min }}&{% endif %}"
+                   class="stat-chip stat-total {% if not selected_statut and not selected_ligne %}active-filter{% endif %}">
+                    <div class="stat-icon"><i class="fas fa-bus"></i></div>
+                    <div>
+                        <div class="stat-num">{{ nb_total }}</div>
+                        <div class="stat-lbl">Bus affichés</div>
+                    </div>
+                </a>
+                <a href="?statut=affecte{% if selected_ligne %}&ligne_id={{ selected_ligne.id }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}{% if selected_marque %}&marque={{ selected_marque }}{% endif %}{% if selected_capacite_min %}&capacite_min={{ selected_capacite_min }}{% endif %}"
+                   class="stat-chip stat-affecte {% if selected_statut == 'affecte' %}active-filter{% endif %}">
+                    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                    <div>
+                        <div class="stat-num">{{ nb_affectes }}</div>
+                        <div class="stat-lbl">Actifs</div>
+                    </div>
+                </a>
+                <a href="?statut=futur{% if selected_ligne %}&ligne_id={{ selected_ligne.id }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}{% if selected_marque %}&marque={{ selected_marque }}{% endif %}{% if selected_capacite_min %}&capacite_min={{ selected_capacite_min }}{% endif %}"
+                   class="stat-chip stat-futur {% if selected_statut == 'futur' %}active-filter{% endif %}">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="stat-num">{{ nb_futurs }}</div>
+                        <div class="stat-lbl">Affectations futures</div>
+                    </div>
+                </a>
+                <a href="?statut=non_affecte{% if selected_ligne %}&ligne_id={{ selected_ligne.id }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}{% if selected_marque %}&marque={{ selected_marque }}{% endif %}{% if selected_capacite_min %}&capacite_min={{ selected_capacite_min }}{% endif %}"
+                   class="stat-chip stat-non-affecte {% if selected_statut == 'non_affecte' %}active-filter{% endif %}">
+                    <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                    <div>
+                        <div class="stat-num">{{ nb_non_affectes }}</div>
+                        <div class="stat-lbl">Non affectés</div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- ── FILTER BAR ── -->
+            <div class="filter-bar">
+                <div class="filter-bar-top">
+                    <h3><i class="fas fa-filter"></i> Filtres</h3>
+                    {% if selected_ligne or selected_statut or selected_marque or selected_date or selected_capacite_min %}
+                        <a href="{% url 'gestion_transport:liste_bus_affectations' %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-times"></i> Réinitialiser
+                        </a>
+                    {% endif %}
+                </div>
+                <form method="get">
+                    <div class="filter-grid row g-3">
+                        <div class="filter-item col-12 col-md-6 col-xl-4">
+                            <label><i class="fas fa-route"></i> Ligne</label>
+                            <select name="ligne_id">
+                                <option value="">Toutes les lignes</option>
+                                {% for ligne in lignes %}
+                                    <option value="{{ ligne.id }}" {% if selected_ligne and selected_ligne.id == ligne.id %}selected{% endif %}>
+                                        {{ ligne.nom_ligne }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-item col-12 col-md-6 col-xl-4">
+                            <label><i class="fas fa-info-circle"></i> Statut</label>
+                            <select name="statut">
+                                <option value="">Tous les statuts</option>
+                                <option value="affecte" {% if selected_statut == 'affecte' %}selected{% endif %}>Affectés actifs</option>
+                                <option value="non_affecte" {% if selected_statut == 'non_affecte' %}selected{% endif %}>Non affectés</option>
+                            </select>
+                        </div>
+                        <div class="filter-item col-12 col-md-6 col-xl-4">
+                            <label><i class="fas fa-car"></i> Marque</label>
+                            <select name="marque">
+                                <option value="">Toutes les marques</option>
+                                {% for m in marques %}
+                                    <option value="{{ m }}" {% if selected_marque == m %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-item col-12 col-md-6 col-xl-6">
+                            <label><i class="fas fa-calendar"></i> Date</label>
+                            <input
+                                type="text"
+                                name="date"
+                                value="{{ selected_date }}"
+                                placeholder="JJ/MM/AAAA ou AAAA-MM-JJ"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                title="Exemples: 10/08/2026, 10-08-2026, 2026-08-10"
+                            >
+                        </div>
+                        <div class="filter-item col-12 col-md-6 col-xl-6">
+                            <label><i class="fas fa-users"></i> Capacité min.</label>
+                            <input type="number" name="capacite_min" value="{{ selected_capacite_min }}" min="1" placeholder="Ex: 20">
+                        </div>
+                    </div>
+                    <div class="filter-actions d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Appliquer
+                        </button>
+                        <button type="button" onclick="clearFilters()" class="btn btn-secondary">
+                            <i class="fas fa-eraser"></i> Effacer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ── BUS LIST ── -->
+            <div class="list-header">
+                <h3>
+                    <i class="fas fa-list"></i>
+                    {{ bus_affectations|length }} bus{{ bus_affectations|length|pluralize }}
+                    {% if selected_ligne %}
+                        <span class="chip chip-brand">Ligne : {{ selected_ligne.nom_ligne }}</span>
+                    {% endif %}
+                    {% if selected_statut == 'affecte' %}
+                        <span class="chip chip-green">Actifs seulement</span>
+                    {% elif selected_statut == 'non_affecte' %}
+                        <span class="chip chip-danger">Non affectés</span>
+                    {% endif %}
+                </h3>
+            </div>
+
+            {% if bus_affectations %}
+            <div class="bus-list">
+                {% for item in bus_affectations %}
+                <div class="bus-card {% if selected_ligne and item.is_affecte_a_ligne %}highlighted{% endif %}">
+
+                    <!-- Header -->
+                    <div class="bus-card-header">
+                        <div class="bus-icon"><i class="fas fa-bus"></i></div>
+                        <div class="bus-title">
+                            <h4>{{ item.bus.numero_immatriculation }}</h4>
+                            <div class="bus-chips">
+                                {% if item.bus.marque %}
+                                    <span class="chip chip-gray"><i class="fas fa-car"></i> {{ item.bus.marque }}</span>
+                                {% endif %}
+                                {% if item.current_conducteur %}
+                                    <span class="chip chip-blue"><i class="fas fa-id-card"></i> {{ item.current_conducteur.prenom }} {{ item.current_conducteur.nom }}</span>
+                                {% endif %}
+                                <span class="chip chip-gray"><i class="fas fa-users"></i> {{ item.bus.capacite }} places</span>
+                                {% if item.bus.date_mise_service %}
+                                    <span class="chip chip-gray"><i class="fas fa-calendar-alt"></i> {{ item.bus.date_mise_service|date:"d/m/Y" }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="status-wrap">
+                            {% if item.statut_bus == 'affecte' %}
+                                <span class="status-badge status-active"><i class="fas fa-check-circle"></i> Affecté</span>
+                            {% elif item.statut_bus == 'affecte_futur' %}
+                                <span class="status-badge status-future"><i class="fas fa-clock"></i> Futur</span>
+                            {% else %}
+                                <span class="status-badge status-none"><i class="fas fa-minus-circle"></i> Non affecté</span>
+                            {% endif %}
+                        </div>
+                        <div class="bus-actions-row">
+                            <a href="{% url 'gestion_transport:edit_bus' item.bus.id %}" class="act-btn act-edit" title="Modifier" onclick="openFormPopup('{% url 'gestion_transport:edit_bus' item.bus.id %}', 'Modifier le bus', 'fas fa-edit'); return false;">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="post" action="{% url 'gestion_transport:sync_bus_driver_assignments' item.bus.id %}" class="inline-action-form" onsubmit="return confirm('Synchroniser ce conducteur sur la periode active du bus ?');">
+                                {% csrf_token %}
+                                <button type="submit" class="act-btn act-view" title="Synchroniser conducteur">
+                                    <i class="fas fa-rotate"></i>
+                                </button>
+                            </form>
+                            <a href="{% url 'gestion_transport:bus_trajets' item.bus.id %}" class="act-btn act-view" title="Voir les trajets">
+                                <i class="fas fa-route"></i>
+                            </a>
+                            <a href="{% url 'gestion_transport:add_affectation_bus' item.bus.id %}" class="act-btn act-add" title="Ajouter une affectation" onclick="openFormPopup('{% url 'gestion_transport:add_affectation_bus' item.bus.id %}', 'Ajouter une affectation', 'fas fa-link'); return false;">
+                                <i class="fas fa-link"></i>
+                            </a>
+                            <a href="{% url 'gestion_transport:delete_bus' item.bus.id %}" class="act-btn act-del" title="Supprimer" onclick="openFormPopup('{% url 'gestion_transport:delete_bus' item.bus.id %}', 'Supprimer le bus', 'fas fa-trash'); return false;">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Affectations table -->
+                    {% if item.affectations_details %}
+                    <div class="bus-card-body">
+                        <table class="aff-table">
+                            <thead>
+                                <tr>
+                                    <th>Ligne</th>
+                                    <th>Statut</th>
+                                    <th>Période</th>
+                                    <th>Trajets</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aff in item.affectations_details %}
+                                <tr>
+                                    <td class="aff-ligne">{{ aff.ligne_nom }}</td>
+                                    <td>
+                                        {% if aff.statut == 'active' %}
+                                            <span class="chip chip-green"><i class="fas fa-circle chip-icon-xs"></i> Active</span>
+                                        {% elif aff.statut == 'future' %}
+                                            <span class="chip chip-blue"><i class="fas fa-clock chip-icon-sm"></i> Future</span>
+                                        {% else %}
+                                            <span class="chip chip-gray"><i class="fas fa-history chip-icon-sm"></i> Passée</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="period-cell">
+                                        {{ aff.date_debut|date:"d/m/Y" }} →
+                                        {% if aff.date_fin %}{{ aff.date_fin|date:"d/m/Y" }}{% else %}<em>en cours</em>{% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="chip chip-gray">{{ aff.trajets_count }} trajet{{ aff.trajets_count|pluralize }}</span>
+                                    </td>
+                                    <td>
+                                        {% if forloop.first %}
+                                            {% if item.prochains_trajets_count > 0 %}
+                                                <a href="{% url 'gestion_transport:bus_trajets' item.bus.id %}" class="trajet-link">
+                                                    <i class="fas fa-calendar-check"></i>
+                                                    {{ item.prochains_trajets_count }} à venir
+                                                    {% if item.prochain_trajet %}
+                                                        · {{ item.prochain_trajet.date_trajet|date:"d/m" }} {{ item.prochain_trajet.heure_depart }}
+                                                    {% endif %}
+                                                </a>
+                                                
+                                            {% else %}
+                                                <a href="{% url 'gestion_transport:bus_trajets' item.bus.id %}" class="trajet-link">
+                                                    <i class="fas fa-route"></i> Voir les trajets
+                                                </a>
+                                           
+                                            {% endif %}
+                                        {% endif %}
+                                             {% comment %} supprimer et modifier une affectation {% endcomment %}
+                                                <a href="{% url 'gestion_transport:edit_affectation' aff.id %}" class="act-btn act-edit" title="Modifier l'affectation" onclick="openFormPopup('{% url 'gestion_transport:edit_affectation' aff.id %}', 'Modifier l\'affectation', 'fas fa-edit'); return false;">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'gestion_transport:delete_affectation' aff.id %}" class="act-btn act-del" title="Supprimer l'affectation" onclick="openFormPopup('{% url 'gestion_transport:delete_affectation' aff.id %}', 'Supprimer l\'affectation', 'fas fa-trash'); return false;">
+                                                    <i class="fas fa-trash"></i> 
+                                                </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="no-aff">
+                        <i class="fas fa-info-circle"></i>
+                        Aucune affectation enregistrée —
+                        <a href="{% url 'gestion_transport:add_affectation_bus' item.bus.id %}" class="inline-action-link" onclick="openFormPopup('{% url 'gestion_transport:edit_bus' item.bus.id %}', 'Modifier le bus', 'fas fa-edit'); return false;">
+                            Affecter ce bus
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <div class="no-data-block">
+                <i class="fas fa-bus"></i>
+                <p>Aucun bus trouvé avec ces critères de filtrage.</p>
+            </div>
+            {% endif %}
+
+            <div class="bottom-actions">
+                <a href="{% url 'gestion_transport:admin_dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Tableau de bord
+                </a>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="{% static 'gestion_transport/app.js' %}?v=9"></script>
+</body>
+</html>

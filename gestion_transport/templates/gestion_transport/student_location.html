@@ -1,0 +1,328 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<header>
+    <h2>Assistant de Localisation</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-location-crosshairs"></i>
+        Trouver ma station
+    </div>
+</header>
+<main class="student-dashboard-page">
+    <section class="panel student-dashboard-panel student-location-assistant-panel">
+        <div class="student-panel-heading">
+            <div>
+                <h3><i class="fas fa-location-crosshairs"></i> Stations les plus proches</h3>
+                <p class="student-panel-subtitle">Détectez votre position pour trouver les stations universitaires les plus proches et consulter les lignes disponibles à l'arrêt le plus proche.</p>
+            </div>
+            <button type="button" class="btn-save" id="detect-location-btn" onclick="detectMyLocation()">
+                <i class="fas fa-location-arrow"></i> Me localiser
+            </button>
+        </div>
+        <div id="geolocation-status" class="student-geo-status">Cliquez sur "Me localiser" pour détecter automatiquement la station la plus proche.</div>
+        <div id="nearby-lines-container" class="student-geo-results">
+            <div>
+                <div class="student-data-eyebrow" style="margin-bottom:8px;">Stations les plus proches</div>
+                <div id="nearby-stations-list" class="student-geo-stations-list">
+                    <div class="student-geo-station-card student-geo-station-card-empty">
+                        <div class="student-geo-station-top">
+                            <div>
+                                <div class="student-data-eyebrow">Station la plus proche</div>
+                                <div class="student-geo-station-name">Position non détectée</div>
+                            </div>
+                            <span class="tag tag-pending">En attente</span>
+                        </div>
+                        <p class="student-geo-station-address">Autorisez la géolocalisation pour afficher les stations proches et leur distance.</p>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div id="nearby-lines-heading" class="student-data-eyebrow" style="margin-bottom:8px;">Lignes disponibles à la station la plus proche</div>
+                <div id="nearby-lines-context" class="student-geo-lines-context" style="display:none;"></div>
+                <div id="nearby-lines-list" class="student-geo-lines-list">
+                    <div class="nearby-line-card nearby-line-card-empty">
+                        <strong>Aucune donnée pour l'instant</strong>
+                        <div class="nearby-line-meta">Lancez la détection pour voir les lignes de la station la plus proche.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="panel student-dashboard-panel">
+        <div class="student-panel-heading">
+            <div>
+                <h3><i class="fas fa-circle-info"></i> Comment ça marche</h3>
+                <p class="student-panel-subtitle">L'assistant utilise la géolocalisation de votre navigateur et les coordonnées GPS des stations enregistrées dans l'application.</p>
+            </div>
+        </div>
+        <div class="student-alert-list">
+            <article class="student-alert-item">
+                <span class="tag tag-pending"><i class="fas fa-location-dot"></i> Étape 1</span>
+                <div>
+                    <strong>Autorisez la géolocalisation</strong>
+                    <p>Le navigateur doit accéder à votre position pour calculer la station la plus proche.</p>
+                </div>
+            </article>
+            <article class="student-alert-item">
+                <span class="tag tag-pending"><i class="fas fa-map"></i> Étape 2</span>
+                <div>
+                    <strong>Repérez votre station</strong>
+                    <p>L'assistant affiche le nom de la station, son adresse et la distance estimée jusqu'à vous.</p>
+                </div>
+            </article>
+            <article class="student-alert-item">
+                <span class="tag tag-pending"><i class="fas fa-route"></i> Étape 3</span>
+                <div>
+                    <strong>Choisissez votre ligne</strong>
+                    <p>Les lignes disponibles à cette station sont listées pour vous guider vers le bon trajet.</p>
+                </div>
+            </article>
+        </div>
+    </section>
+</main>
+
+<script>
+function detectMyLocation() {
+    const statusDiv = document.getElementById('geolocation-status');
+    const detectBtn = document.getElementById('detect-location-btn');
+
+    if (!statusDiv || !detectBtn) {
+        return;
+    }
+
+    if (!navigator.geolocation) {
+        showGeoStatus('❌ Géolocalisation non supportée par votre navigateur', 'error');
+        return;
+    }
+
+    detectBtn.disabled = true;
+    showGeoStatus('📍 Localisation en cours...', 'loading');
+
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const accuracy = Math.round(position.coords.accuracy);
+
+            showGeoStatus(`✓ Position détectée (précision: ±${accuracy}m)`, 'success');
+            setPendingStationState('Recherche de la station la plus proche...');
+            fetchNearbyLines(latitude, longitude);
+            detectBtn.disabled = false;
+        },
+        function(error) {
+            let errorMsg = '❌ ';
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMsg += 'Permission de géolocalisation refusée. Vérifiez vos paramètres de confidentialité.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMsg += 'Position indisponible. Vérifiez votre GPS.';
+                    break;
+                case error.TIMEOUT:
+                    errorMsg += 'Délai dépassé. Réessayez.';
+                    break;
+                default:
+                    errorMsg += 'Erreur de géolocalisation.';
+            }
+            showGeoStatus(errorMsg, 'error');
+            detectBtn.disabled = false;
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+}
+
+function setPendingStationState(message) {
+    const stationsList = document.getElementById('nearby-stations-list');
+    const linesList = document.getElementById('nearby-lines-list');
+    const linesHeading = document.getElementById('nearby-lines-heading');
+    const linesContext = document.getElementById('nearby-lines-context');
+
+    if (stationsList) {
+        stationsList.innerHTML = '<div class="student-geo-station-card student-geo-station-card-empty"><div class="student-geo-station-top"><div><div class="student-data-eyebrow">Stations les plus proches</div><div class="student-geo-station-name">Recherche en cours</div></div><span class="tag tag-pending">...</span></div><p class="student-geo-station-address">' + message + '</p></div>';
+    }
+    if (linesHeading) {
+        linesHeading.textContent = 'Lignes disponibles à la station la plus proche';
+    }
+    if (linesContext) {
+        linesContext.style.display = 'none';
+        linesContext.textContent = '';
+    }
+    if (linesList) {
+        linesList.innerHTML = '<div class="nearby-line-card nearby-line-card-empty"><strong>Chargement...</strong><div class="nearby-line-meta">Recherche des lignes disponibles à cette station.</div></div>';
+    }
+}
+
+function showGeoStatus(message, type) {
+    const statusDiv = document.getElementById('geolocation-status');
+    if (!statusDiv) {
+        return;
+    }
+
+    statusDiv.textContent = message;
+    statusDiv.style.display = 'block';
+
+    if (type === 'success') {
+        statusDiv.style.backgroundColor = '#d4edda';
+        statusDiv.style.color = '#155724';
+        statusDiv.style.borderLeft = '4px solid #28a745';
+    } else if (type === 'error') {
+        statusDiv.style.backgroundColor = '#f8d7da';
+        statusDiv.style.color = '#721c24';
+        statusDiv.style.borderLeft = '4px solid #dc3545';
+    } else if (type === 'loading') {
+        statusDiv.style.backgroundColor = '#d1ecf1';
+        statusDiv.style.color = '#0c5460';
+        statusDiv.style.borderLeft = '4px solid #17a2b8';
+    }
+}
+
+function fetchNearbyLines(latitude, longitude) {
+    const url = `{% url 'gestion_transport:get_nearby_lines' %}?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&limit=5`;
+
+    fetch(url)
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Réponse serveur invalide');
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success && data.nearest_station) {
+                displayNearbyLines(data);
+            } else {
+                showGeoStatus(data.error || '❌ Aucune station géolocalisée trouvée près de votre position', 'error');
+                hideNearbyLinesContainer();
+            }
+        })
+        .catch(function(error) {
+            console.error('Erreur lors de la récupération des lignes:', error);
+            showGeoStatus('❌ Erreur lors de la récupération des lignes', 'error');
+            hideNearbyLinesContainer();
+        });
+}
+
+function displayNearbyLines(payload) {
+    const container = document.getElementById('nearby-lines-container');
+    const stationsList = document.getElementById('nearby-stations-list');
+    const linesList = document.getElementById('nearby-lines-list');
+    const linesHeading = document.getElementById('nearby-lines-heading');
+    const linesContext = document.getElementById('nearby-lines-context');
+
+    if (!container || !linesList || !stationsList || !linesHeading || !linesContext) {
+        return;
+    }
+
+    const nearestStation = payload.nearest_station || null;
+    const nearestStations = payload.nearest_stations || [];
+    const stationLines = payload.lines_at_station || [];
+    const alternativeStationLines = payload.alternative_station_lines || [];
+
+    stationsList.innerHTML = '';
+
+    if (!nearestStations.length) {
+        stationsList.innerHTML = '<div class="student-geo-station-card student-geo-station-card-empty"><div class="student-geo-station-top"><div><div class="student-data-eyebrow">Stations les plus proches</div><div class="student-geo-station-name">Aucune station trouvée</div></div><span class="tag tag-pending">-</span></div><p class="student-geo-station-address">Aucune station géolocalisée n\'est disponible près de votre position.</p></div>';
+    }
+
+    nearestStations.forEach(function(station, index) {
+        const card = document.createElement('div');
+        card.className = 'student-geo-station-card' + (index === 0 ? ' is-primary' : '');
+        card.innerHTML = `
+            <div class="student-geo-station-top">
+                <div>
+                    <div class="student-data-eyebrow">${index === 0 ? 'Station la plus proche' : `Alternative ${index}`}</div>
+                    <div class="student-geo-station-name">${station.nom}</div>
+                </div>
+                <span class="tag ${index === 0 ? 'tag-active' : 'tag-pending'}">${station.distance_km} km</span>
+            </div>
+            <p class="student-geo-station-address">${station.adresse || 'Adresse non renseignée'}</p>
+        `;
+        stationsList.appendChild(card);
+    });
+
+    linesList.innerHTML = '';
+
+    if (stationLines.length) {
+        linesHeading.textContent = 'Lignes disponibles à la station la plus proche';
+        linesContext.style.display = 'none';
+        linesContext.textContent = '';
+    } else if (alternativeStationLines.length) {
+        linesHeading.textContent = 'Lignes proposées sur les stations alternatives';
+        linesContext.style.display = 'block';
+        linesContext.textContent = nearestStation
+            ? `Aucune ligne directe n'a été trouvée à ${nearestStation.nom}. Voici les meilleures alternatives proches.`
+            : 'Aucune ligne directe n\'a été trouvée. Voici les meilleures alternatives proches.';
+    } 
+
+    if (!stationLines.length && !alternativeStationLines.length) {
+        const stationLabel = nearestStation ? nearestStation.nom : 'cette station';
+        linesList.innerHTML = `<div class="nearby-line-card nearby-line-card-empty"><strong>Aucune ligne trouvée</strong><div class="nearby-line-meta">Aucune ligne n'est actuellement associée à ${stationLabel}.</div></div>`;
+    }
+
+    stationLines.forEach(function(ligne) {
+        const card = document.createElement('div');
+        card.className = 'nearby-line-card';
+        card.innerHTML = `
+            <strong>${ligne.nom}</strong>
+            <div class="nearby-line-meta">
+                ${ligne.ordre_station ? `Station n°${ligne.ordre_station} sur la ligne` : 'Ligne disponible ici'}
+            </div>
+            <div class="nearby-line-submeta">
+                ${nearestStation ? `Disponible à ${nearestStation.nom}` : 'Disponible à cette station'}
+            </div>
+        `;
+        linesList.appendChild(card);
+    });
+
+    if (!stationLines.length) {
+        alternativeStationLines.forEach(function(station) {
+            station.lines.forEach(function(ligne) {
+                const card = document.createElement('div');
+                card.className = 'nearby-line-card nearby-line-card-alternative';
+                card.innerHTML = `
+                    <span class="nearby-line-badge">Alternative</span>
+                    <strong>${ligne.nom}</strong>
+                    <div class="nearby-line-meta">
+                        ${ligne.ordre_station ? `Station n°${ligne.ordre_station} sur la ligne` : 'Ligne disponible ici'}
+                    </div>
+                    <div class="nearby-line-submeta">
+                        Proposée à ${station.nom} (${station.distance_km} km)
+                    </div>
+                `;
+                linesList.appendChild(card);
+            });
+        });
+    }
+
+    container.style.display = 'block';
+}
+
+function hideNearbyLinesContainer() {
+    const container = document.getElementById('nearby-lines-container');
+    if (container) {
+        container.style.display = 'block';
+    }
+
+    const stationsList = document.getElementById('nearby-stations-list');
+    const linesList = document.getElementById('nearby-lines-list');
+    const linesHeading = document.getElementById('nearby-lines-heading');
+    const linesContext = document.getElementById('nearby-lines-context');
+
+    if (stationsList) {
+        stationsList.innerHTML = '<div class="student-geo-station-card student-geo-station-card-empty"><div class="student-geo-station-top"><div><div class="student-data-eyebrow">Stations les plus proches</div><div class="student-geo-station-name">Position non détectée</div></div><span class="tag tag-pending">Indisponible</span></div><p class="student-geo-station-address">Impossible d\'afficher des stations proches tant que la localisation n\'est pas disponible.</p></div>';
+    }
+    if (linesHeading) {
+        linesHeading.textContent = 'Lignes disponibles à la station la plus proche';
+    }
+    if (linesContext) {
+        linesContext.style.display = 'none';
+        linesContext.textContent = '';
+    }
+    if (linesList) {
+        linesList.innerHTML = '<div class="nearby-line-card nearby-line-card-empty"><strong>Aucune donnée disponible</strong><div class="nearby-line-meta">Vérifiez la géolocalisation puis réessayez.</div></div>';
+    }
+}
+</script>
+{% endblock %}

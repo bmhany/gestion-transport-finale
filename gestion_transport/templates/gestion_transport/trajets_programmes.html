@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trajets programmés - Transport Universitaire</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'gestion_transport/style.css' %}">
+</head>
+<body class="page-trajets-programmes" data-dark="0"
+      data-logout-url="{% url 'gestion_transport:admin_logout' %}"
+      data-logout-confirm="Êtes-vous sûr de vouloir vous déconnecter?">
+    {% url 'gestion_transport:trajets_programmes' as admin_trajets_url %}
+    <div id="appLayout">
+        {% csrf_token %}
+        {% include 'gestion_transport/_admin_sidebar.html' with active_nav='trajets' trajets_url=admin_trajets_url %}
+        <div class="main-col">
+            <header>
+                <h2>Trajets programmés - {{ selected_ligne_nom }}</h2>
+                <div class="user-badge badge-admin">
+                    <i class="fas fa-user-shield"></i>
+                    Administrateur
+                </div>
+            </header>
+            <main>
+                {% if messages %}
+                    <div class="flash-list">
+                        {% for message in messages %}
+                            <div class="flash-message">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="panel">
+                    <div class="filter-heading-wrap">
+                        <h3><i class="fas fa-calendar"></i> Filtres</h3>
+                    </div>
+                    
+                    <div class="filters-panel">
+                        <form method="get">
+                            {% csrf_token %}
+                            <div class="form-row filter-grid">
+                                <div class="filter-item">
+                                    <label>Ligne sélectionnée</label>
+                                    <input type="text" value="{{ selected_ligne_nom }}" disabled>
+                                    {% if selected_ligne_id %}
+                                        <input type="hidden" name="ligne_id" value="{{ selected_ligne_id }}">
+                                    {% endif %}
+                                </div>
+                                <div class="filter-item">
+                                    <label for="bus_id">Bus</label>
+                                    <select id="bus_id" name="bus_id">
+                                        <option value="">Tous les bus</option>
+                                        {% for bus in bus_list %}
+                                            <option value="{{ bus.id }}" {% if selected_bus_id == bus.id|stringformat:'s' %}selected{% endif %}>
+                                                {{ bus.numero_immatriculation }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="date">Mois</label>
+                                    <input id="date" type="month" name="date" value="{{ selected_date }}">
+                                </div>
+                            </div>
+                            <div class="filter-actions-row">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-filter"></i> Filtrer
+                                </button>
+                                <button
+                                    class="btn btn-outline"
+                                    type="submit"
+                                    formaction="{% url 'gestion_transport:dispatch_trajets_equitable' %}"
+                                    formmethod="post"
+                                    {% if not selected_ligne_id %}disabled{% endif %}
+                                    title="Repartit les trajets du mois sur les bus disponibles"
+                                >
+                                    <i class="fas fa-random"></i> Dispatch equitable
+                                </button>
+                                <button class="btn btn-outline" type="button" onclick="window.location.href='{% url 'gestion_transport:liste_lignes' %}'">
+                                    <i class="fas fa-arrow-left"></i> Voir les lignes
+                                </button>
+                                <a class="btn btn-outline" href="{% url 'gestion_transport:trajets_programmes' %}">
+                                    <i class="fas fa-times"></i> Réinitialiser
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="panel calendar-shell">
+                    <div class="calendar-toolbar">
+                        <div class="calendar-month">{{ month_label }}</div>
+                        <div class="calendar-nav">
+                            <a class="btn btn-outline" href="?{{ prev_month_query }}">
+                                <i class="fas fa-chevron-left"></i> Mois precedent
+                            </a>
+                            <a class="btn btn-outline" href="?{{ next_month_query }}">
+                                <i class="fas fa-chevron-right"></i> Mois suivant
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="calendar-legend">
+                        <span class="legend-item">
+                            <span class="legend-dot aller"></span> Aller
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-dot retour"></span> Retour
+                        </span>
+                        <span class="legend-item">
+                            <i class="fas fa-info-circle"></i> Clique sur une case pour choisir la date
+                        </span>
+                    </div>
+
+                    <div class="calendar-grid">
+                        {% for label in weekday_labels %}
+                            <div class="calendar-weekday">{{ label }}</div>
+                        {% endfor %}
+                        {% for week in calendar_weeks %}
+                            {% for day in week %}
+                                <div class="calendar-day clickable {% if not day.in_current_month %}outside{% endif %} {% if day.is_today %}today{% endif %} {% if day.is_selected %}selected{% endif %}" data-url="?{{ day.query }}">
+                                    <div class="day-number">{{ day.date|date:"j" }}</div>
+                                    {% if day.trajets_count %}
+                                        <div class="day-badge">{{ day.trajets_count }} trajet{% if day.trajets_count != 1 %}s{% endif %}</div>
+                                    {% else %}
+                                        <div class="calendar-empty">Aucun trajet</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% if not trajets %}
+                    <div class="panel">
+                        <p>Aucun trajet programmé trouvé avec ces filtres.</p>
+                    </div>
+                {% endif %}
+
+                <div id="agenda-panel" class="panel agenda-panel">
+                    <div class="agenda-title"><i class="fas fa-calendar-day"></i> Agenda du {{ selected_day|date:"j F Y" }}</div>
+                    {% if selected_day_slots %}
+                        <table class="agenda-table">
+                            <thead>
+                                <tr>
+                                    <th>Horaire</th>
+                                    <th>Sens</th>
+                                    <th>Ligne</th>
+                                    <th>Bus</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for slot in selected_day_slots %}
+                                    <tr>
+                                        <td><span class="agenda-time">{{ slot.heure_depart }} - {{ slot.heure_arrivee }}</span></td>
+                                        <td><span class="agenda-sens {{ slot.sens }}">{{ slot.sens_display }}</span></td>
+                                        <td>{{ slot.ligne_nom }}</td>
+                                        <td>
+                                            <div class="agenda-buses">
+                                                {% for immat in slot.buses %}
+                                                    <span class="agenda-bus-chip">{{ immat }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="muted">Aucun trajet pour cette date.</p>
+                    {% endif %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="{% static 'gestion_transport/app.js' %}?v=9"></script>
+</body>
+</html>

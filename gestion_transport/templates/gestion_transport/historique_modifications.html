@@ -1,0 +1,122 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historique des modifications - Transport Universitaire</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'gestion_transport/style.css' %}">
+</head>
+<body class="page-historique-modifications" data-dark="0"
+      data-login-url="{% url 'gestion_transport:admin_login' %}"
+      data-logout-url="{% url 'gestion_transport:admin_logout' %}">
+<div id="appLayout">
+    {% csrf_token %}
+    {% include 'gestion_transport/_admin_sidebar.html' with active_nav='historique' %}
+
+    <div class="main-col">
+        <header>
+            <h2><i class="fas fa-bell history-heading-icon"></i> Historique des modifications</h2>
+            <div class="user-badge badge-admin"><i class="fas fa-user-shield"></i> Administrateur</div>
+        </header>
+
+        <main class="history-shell">
+            <div class="panel">
+                <h3><i class="fas fa-filter"></i> Filtres</h3>
+                <form method="get">
+                    <div class="filter-grid">
+                        <div class="filter-item">
+                            <label>Action</label>
+                            <select name="action">
+                                <option value="">Toutes</option>
+                                {% for key, label in action_choices %}
+                                    <option value="{{ key }}" {% if selected_action == key %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Type d'objet</label>
+                            <select name="objet_type">
+                                <option value="">Tous</option>
+                                {% for objet in objet_choices %}
+                                    <option value="{{ objet }}" {% if selected_objet_type == objet %}selected{% endif %}>{{ objet }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Utilisateur</label>
+                            <select name="utilisateur">
+                                <option value="">Tous</option>
+                                {% for u in utilisateur_choices %}
+                                    <option value="{{ u }}" {% if selected_utilisateur == u %}selected{% endif %}>{{ u }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Date début</label>
+                            <input type="date" name="date_debut" value="{{ selected_date_debut }}">
+                        </div>
+                        <div class="filter-item">
+                            <label>Date fin</label>
+                            <input type="date" name="date_fin" value="{{ selected_date_fin }}">
+                        </div>
+                        <div class="filter-item filter-item-wide">
+                            <label>Recherche libre</label>
+                            <input type="text" name="q" value="{{ selected_q }}" placeholder="description, objet, utilisateur...">
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrer</button>
+                        <a href="{% url 'gestion_transport:historique_modifications' %}" class="btn btn-secondary"><i class="fas fa-rotate-left"></i> Réinitialiser</a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h3><i class="fas fa-list"></i> Résultats ({{ page_obj.paginator.count }})</h3>
+                {% if page_obj %}
+                    <div class="history-list">
+                        {% for entry in page_obj %}
+                            <article class="history-item history-card">
+                                <div class="history-card-head">
+                                    <div class="history-card-icon"><i class="fas fa-bell"></i></div>
+                                    <div class="history-card-title-wrap">
+                                        <div class="history-title">{{ entry.get_action_display }}</div>
+                                        <div class="history-chips">
+                                            <span class="chip chip-gray"><i class="fas fa-layer-group"></i> {{ entry.objet_type }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="history-meta">
+                                        <div class="history-date">{{ entry.date_action|date:"d/m/Y H:i" }}</div>
+                                        <div class="history-user">{% if entry.utilisateur %}{{ entry.utilisateur }}{% else %}Système{% endif %}</div>
+                                    </div>
+                                </div>
+                                <div class="history-card-body">
+                                    <div class="history-text">{{ entry.description }}</div>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+
+                    <div class="pager">
+                        {% if page_obj.has_previous %}
+                            <a href="?action={{ selected_action }}&objet_type={{ selected_objet_type }}&utilisateur={{ selected_utilisateur }}&date_debut={{ selected_date_debut }}&date_fin={{ selected_date_fin }}&q={{ selected_q }}&page={{ page_obj.previous_page_number }}">Précédent</a>
+                        {% endif %}
+                        <span class="active">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                        {% if page_obj.has_next %}
+                            <a href="?action={{ selected_action }}&objet_type={{ selected_objet_type }}&utilisateur={{ selected_utilisateur }}&date_debut={{ selected_date_debut }}&date_fin={{ selected_date_fin }}&q={{ selected_q }}&page={{ page_obj.next_page_number }}">Suivant</a>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="empty">Aucun résultat.</p>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="{% static 'gestion_transport/app.js' %}?v=9"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<aside>
+    <div class="sidebar-logo">
+        <i class="fas fa-bus"></i>
+        <span>MyCous</span>
+    </div>
+    <nav>
+        <button class="nav-btn{% if active_nav == 'dashboard' %} active{% endif %}" type="button" data-panel="dashboard" onclick="window.location.href='{% url 'gestion_transport:admin_dashboard' %}'">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Tableau de Bord</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'stations' %} active{% endif %}" type="button" data-panel="station" onclick="window.location.href='{% url 'gestion_transport:liste_stations' %}'">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Gestion Stations</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'lignes' %} active{% endif %}" type="button" onclick="window.location.href='{% url 'gestion_transport:liste_lignes' %}'">
+            <i class="fas fa-route"></i>
+            <span>Gestion Lignes</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'bus' %} active{% endif %}" type="button" onclick="window.location.href='{% url 'gestion_transport:liste_bus_affectations' %}'">
+            <i class="fas fa-bus"></i>
+            <span>Gestion Bus</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'trajets' %} active{% endif %}" type="button" data-panel="trajets" onclick="window.location.href='{% if trajets_url %}{{ trajets_url }}{% else %}{% url 'gestion_transport:trajets' %}{% endif %}'">
+            <i class="fas fa-route"></i>
+            <span>Trajets</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'etudiants' %} active{% endif %}" type="button" data-panel="etudiants" onclick="window.location.href='{% url 'gestion_transport:etudiants_par_ligne' %}'">
+            <i class="fas fa-users"></i>
+            <span>Gestion Étudiants</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'conducteurs' %} active{% endif %}" type="button" onclick="window.location.href='{% url 'gestion_transport:liste_conducteurs' %}'">
+            <i class="fas fa-id-card"></i>
+            <span>Gestion Conducteurs</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'rapports' %} active{% endif %}" type="button" onclick="window.location.href='{% url 'gestion_transport:remplissage_bus' %}'">
+            <i class="fas fa-chart-line"></i>
+            <span>Rapports</span>
+        </button>
+        <button class="nav-btn{% if active_nav == 'historique' %} active{% endif %}" type="button" onclick="window.location.href='{% url 'gestion_transport:historique_modifications' %}'">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span>Historique</span>
+        </button>
+    </nav>
+    <div class="sidebar-bottom">
+        <button type="button" onclick="toggleDark(this)">
+            <i class="fas fa-moon"></i>
+            <span>Mode Sombre</span>
+        </button>
+        <button type="button" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Déconnexion</span>
+        </button>
+    </div>
+</aside>

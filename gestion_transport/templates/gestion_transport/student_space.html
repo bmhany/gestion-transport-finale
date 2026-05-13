@@ -1,0 +1,44 @@
+{% extends 'gestion_transport/base.html' %}
+
+{% block title %}Espace Étudiant - MyCous Transport Universitaire{% endblock %}
+
+{% block page_title %}
+    <div>
+        <h1>Espace Étudiant</h1>
+        <p>Connexion avec matricule et mot de passe</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="page-panel auth-panel">
+    <h2>Connexion étudiant</h2>
+    <p>Entrez votre matricule (12 chiffres) et le mot de passe fourni par l'administrateur.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p class="input-error u-inline-170">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" action="{% url 'gestion_transport:student_login' %}">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="student_id">Matricule étudiant</label>
+            <input id="student_id" name="student_id" type="text" placeholder="012345678901" maxlength="12" inputmode="numeric" pattern="\d*" oninput="document.getElementById('sdCount').textContent=this.value.length+' / 12'" required>
+            <small id="sdCount">0 / 12</small>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input id="password" name="password" type="password" placeholder="Votre mot de passe" required>
+        </div>
+
+        <div class="form-actions u-inline-133">
+            <button type="submit" class="btn-primary"><i class="fas fa-sign-in-alt"></i> Se connecter</button>
+            <button type="button" class="btn-cancel" onclick="window.location.href='/';">Retour à l'accueil</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

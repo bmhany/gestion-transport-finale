@@ -1,0 +1,226 @@
+{% extends 'gestion_transport/base.html' %}
+{% load static %}
+
+{% block title %}Horaires des lignes{% endblock %}
+
+{% block page_title %}<div></div>{% endblock %}
+
+{% block body_class %}page-horaires-ligne{% endblock %}
+
+{% block content %}
+<div class="hl-backdrop">
+    <div class="hl-card">
+
+        <!-- En-tête -->
+        <div class="hl-head">
+            <div>
+                <h2><i class="fas fa-clock"></i> Horaires des lignes</h2>
+                <p>Consultez et gérez les départs par jour et par sens de circulation.</p>
+            </div>
+        </div>
+
+        <!-- Sélection de la ligne -->
+        <div class="hl-section">
+            <form method="get" class="hl-select-form">
+                <label for="ligne_id">Ligne à consulter</label>
+                <div class="hl-select-row">
+                    <select name="ligne_id" id="ligne_id">
+                        <option value="">-- Choisir une ligne --</option>
+                        {% for l in lignes %}
+                        <option value="{{ l.id }}" {% if selected_ligne and l.id == selected_ligne.id %}selected{% endif %}>
+                            {{ l.nom_ligne }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="hl-btn-primary">
+                        <i class="fas fa-search"></i> Afficher
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if ligne %}
+
+        <!-- Formulaire ajout / modification -->
+        <div class="hl-section">
+            <h3 class="hl-section-title">
+                {% if editing_horaire %}
+                    <i class="fas fa-pen"></i> Modifier la paire aller/retour
+                {% else %}
+                    <i class="fas fa-plus-circle"></i> Ajouter une paire aller/retour — {{ ligne.nom_ligne }}
+                {% endif %}
+            </h3>
+            <p class="hl-section-note">Un horaire correspond à un jour et à une paire aller/retour. Saisissez les deux départs, l'heure d'arrivée sera calculée automatiquement (+1h).</p>
+            <form method="post" class="hl-form">
+                {% csrf_token %}
+                <input type="hidden" name="ligne_id" value="{{ ligne.id }}">
+                <input type="hidden" name="action" value="{% if editing_horaire %}update{% else %}create{% endif %}">
+                {% if editing_horaire %}
+                    <input type="hidden" name="editing_horaire_id" value="{{ editing_horaire.id }}">
+                {% endif %}
+
+                <div class="hl-form-grid hl-form-grid-pair">
+                    <div class="hl-field">
+                        <label for="{{ horaire_pair_form.jour_semaine.id_for_label }}">{{ horaire_pair_form.jour_semaine.label }}</label>
+                        {{ horaire_pair_form.jour_semaine }}
+                    </div>
+                    <div class="hl-field">
+                        <label for="{{ horaire_pair_form.heure_depart_aller.id_for_label }}">{{ horaire_pair_form.heure_depart_aller.label }}</label>
+                        {{ horaire_pair_form.heure_depart_aller }}
+                    </div>
+                    <div class="hl-field">
+                        <label for="{{ horaire_pair_form.heure_depart_retour.id_for_label }}">{{ horaire_pair_form.heure_depart_retour.label }}</label>
+                        {{ horaire_pair_form.heure_depart_retour }}
+                    </div>
+                </div>
+
+                {% if horaire_pair_form.non_field_errors %}
+                    <div class="hl-error">{{ horaire_pair_form.non_field_errors }}</div>
+                {% endif %}
+                {% for field in horaire_pair_form %}
+                    {% if field.errors %}
+                        <div class="hl-error">{{ field.label }} : {{ field.errors|join:', ' }}</div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="hl-form-actions">
+                    <button type="submit" class="hl-btn-primary">
+                        {% if editing_horaire %}
+                            <i class="fas fa-save"></i> Enregistrer la paire
+                        {% else %}
+                            <i class="fas fa-plus"></i> Ajouter la paire
+                        {% endif %}
+                    </button>
+                    {% if editing_horaire %}
+                        <a class="hl-btn-cancel" href="{% url 'gestion_transport:horaires_ligne_detail' ligne.id %}">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Vue par jour -->
+        <div class="hl-section">
+            <h3 class="hl-section-title"><i class="fas fa-calendar-days"></i> Vue par jour</h3>
+            <table class="hl-table">
+                <thead>
+                    <tr>
+                        <th>Jour</th>
+                        <th>{{ sens_label_aller }}</th>
+                        <th>{{ sens_label_retour }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for jour in horaires_groupes %}
+                    <tr>
+                        <td><strong>{{ jour.jour_label }}</strong></td>
+                        <td>
+                            {% for horaire in jour.aller %}
+                                <div class="hl-day-slot">
+                                    <div class="hl-day-slot-time">{{ horaire.heure_depart }} - {{ horaire.heure_arrivee }}</div>
+                                    <div class="hl-row-actions">
+                                        <form method="post" class="hl-inline-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="ligne_id" value="{{ ligne.id }}">
+                                            <input type="hidden" name="horaire_id" value="{{ horaire.id }}">
+                                            <button type="submit" name="action" value="start_edit" class="hl-act-edit">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                        </form>
+                                        <form method="post" class="hl-inline-form" onsubmit="return confirm('Supprimer cet horaire ?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="ligne_id" value="{{ ligne.id }}">
+                                            <input type="hidden" name="horaire_id" value="{{ horaire.id }}">
+                                            <button type="submit" name="action" value="delete" class="hl-act-del">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <span class="hl-empty-inline">-</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for horaire in jour.retour %}
+                                <div class="hl-day-slot">
+                                    <div class="hl-day-slot-time">{{ horaire.heure_depart }} - {{ horaire.heure_arrivee }}</div>
+                                    <div class="hl-row-actions">
+                                        <form method="post" class="hl-inline-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="ligne_id" value="{{ ligne.id }}">
+                                            <input type="hidden" name="horaire_id" value="{{ horaire.id }}">
+                                            <button type="submit" name="action" value="start_edit" class="hl-act-edit">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                        </form>
+                                        <form method="post" class="hl-inline-form" onsubmit="return confirm('Supprimer cet horaire ?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="ligne_id" value="{{ ligne.id }}">
+                                            <input type="hidden" name="horaire_id" value="{{ horaire.id }}">
+                                            <button type="submit" name="action" value="delete" class="hl-act-del">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <span class="hl-empty-inline">-</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="hl-empty-row">
+                        <td colspan="3"><i class="fas fa-info-circle"></i> Aucun horaire défini</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% endif %}
+
+    </div>
+</div>
+
+<style>
+body.page-horaires-ligne .hl-section-note {
+    margin: -6px 0 14px;
+    color: var(--ink);
+    font-size: .9rem;
+    line-height: 1.45;
+}
+
+body.page-horaires-ligne .hl-day-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+body.page-horaires-ligne .hl-day-slot:not(:last-child) {
+    border-bottom: 1px dashed var(--r100);
+    margin-bottom: 8px;
+}
+
+body.page-horaires-ligne .hl-day-slot-time {
+    font-weight: 700;
+    color: var(--r900);
+}
+
+body.page-horaires-ligne .hl-empty-inline {
+    color: var(--ink);
+    font-style: italic;
+}
+
+body.page-horaires-ligne .hl-table .hl-day-slot-time::after {
+    content: "";
+}
+
+body.page-horaires-ligne .hl-form-grid-pair {
+    grid-template-columns: repeat(3, 1fr);
+}
+</style>
+
+{% endblock %}

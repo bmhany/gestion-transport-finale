@@ -1,0 +1,110 @@
+{% extends 'gestion_transport/base.html' %}
+
+{% block title %}Rapport des trajets - Transport Universitaire{% endblock %}
+
+{% block page_title %}
+    <div>
+        <h1>Rapport des trajets</h1>
+        <p>Consultez les trajets en retard ainsi que les trajets a temps.</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="page-panel">
+    <div class="table-card" style="margin-bottom: 18px;">
+        <h3>Filtres</h3>
+        <form method="get" class="filters-form">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="id_date">Date</label>
+                    <input type="date" id="id_date" name="date" value="{{ selected_date }}">
+                </div>
+                <div class="form-group">
+                    <label for="id_ligne_id">Ligne</label>
+                    <select id="id_ligne_id" name="ligne_id">
+                        <option value="">Toutes les lignes</option>
+                        {% for ligne in lignes %}
+                            <option value="{{ ligne.id }}" {% if selected_ligne_id == ligne.id|stringformat:'s' %}selected{% endif %}>{{ ligne.nom_ligne }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="button-row" style="margin-top: 14px;">
+                <button type="submit" class="btn">Filtrer</button>
+                <a href="{% url 'gestion_transport:trajets_retard' %}" class="btn">Reinitialiser</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="stats-grid compact-stats" style="margin-bottom: 18px;">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats_retard_count }}</div>
+            <div class="stat-label">Trajets en retard</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats_on_time_count }}</div>
+            <div class="stat-label">Trajets a temps</div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <h3>Trajets en retard</h3>
+        {% if trajets_retard %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date du trajet</th>
+                        <th>Bus</th>
+                        <th>Ligne</th>
+                        <th>Horaire</th>
+                        <th>Retard (minutes)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trajet in trajets_retard %}
+                        <tr>
+                            <td>{{ trajet.date_trajet }}</td>
+                            <td>{{ trajet.bus.numero_immatriculation }}</td>
+                            <td>{{ trajet.ligne.nom_ligne }}</td>
+                            <td>{{ trajet.horaire.heure_depart }}</td>
+                            <td>{{ trajet.retard_minutes }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Aucun trajet en retard n'a ete trouve.</p>
+        {% endif %}
+    </div>
+
+    <div class="table-card" style="margin-top: 18px;">
+        <h3>Trajets a temps</h3>
+        {% if trajets_a_temps %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date du trajet</th>
+                        <th>Bus</th>
+                        <th>Ligne</th>
+                        <th>Horaire</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trajet in trajets_a_temps %}
+                        <tr>
+                            <td>{{ trajet.date_trajet }}</td>
+                            <td>{{ trajet.bus.numero_immatriculation }}</td>
+                            <td>{{ trajet.ligne.nom_ligne }}</td>
+                            <td>{{ trajet.horaire.heure_depart }}</td>
+                            <td>A temps</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Aucun trajet a temps n'a ete trouve.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

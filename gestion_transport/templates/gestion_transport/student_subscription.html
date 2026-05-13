@@ -1,0 +1,151 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<style>
+    .student-subscription-summary-grid {
+        display: grid;
+        grid-template-columns: minmax(170px, 220px) fit-content(320px);
+        gap: 12px;
+        align-items: stretch;
+        justify-content: start;
+        margin-bottom: 28px;
+    }
+
+    .student-subscription-location-card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 18px 20px;
+        text-decoration: none;
+        color: inherit;
+        width: auto;
+        background: radial-gradient(circle at top right, rgba(255,255,255,0.42) 0, rgba(255,255,255,0) 36%), linear-gradient(135deg, rgba(14,165,233,0.18) 0%, rgba(255,255,255,0.96) 45%, rgba(255,107,53,0.18) 100%);
+    }
+
+    .student-subscription-list-panel {
+        margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .student-subscription-summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<header>
+    <h2><i class="fas fa-id-card"></i> Mon Abonnement</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-user-graduate"></i>
+        {{ student_name }}
+    </div>
+</header>
+<main>
+    <div class="student-subscription-summary-grid">
+        <div class="stat">
+            <div class="num">{{ stats_active_subscriptions }}</div>
+            <div class="lbl">Abonnements actifs</div>
+        </div>
+        <a class="stat student-subscription-location-card" href="{% url 'gestion_transport:student_location' %}">
+            <div style="display:flex;align-items:center;gap:14px;text-align:left;">
+                <span style="width:48px;height:48px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #0ea5e9, #f97316);color:#fff;box-shadow:0 10px 24px rgba(14,165,233,0.22);flex-shrink:0;">
+                    <i class="fas fa-location-crosshairs" style="font-size:18px;"></i>
+                </span>
+                <div>
+                    <div class="lbl" style="margin-top:0;">Assistant</div>
+                    <div style="font-size:18px;font-weight:800;line-height:1.2;color:var(--text);">de localisation</div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="panel student-subscription-list-panel">
+        <h3><i class="fas fa-list-check"></i> Mes abonnements aux lignes</h3>
+        <div class="student-cards-list">
+            {% for sub in subscriptions %}
+            <div class="student-data-card subscription-card">
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Ligne</div>
+                    <div class="student-data-value">{{ sub.ligne }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Date début</div>
+                    <div class="student-data-value muted">{{ sub.dateDebut }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Date fin</div>
+                    <div class="student-data-value muted">{{ sub.dateFin }}</div>
+                </div>
+                <div class="student-data-actions">
+                    <span class="tag tag-active"><i class="fas fa-check-circle"></i> {{ sub.statut }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="student-data-empty">Vous n'êtes abonné à aucune ligne pour le moment.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3><i class="fas fa-plus-circle"></i> S'abonner à une nouvelle ligne</h3>
+        <div id="subscription-form-area">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Choisir une ligne</label>
+                    <select id="select-ligne" style="width:100%;border-radius:12px;padding:10px 14px;border:1.5px solid var(--border);background:var(--card);color:var(--text);">
+                        <option value="">-- Sélectionner une ligne --</option>
+                        {% for ligne in lignes %}
+                        <option value="{{ ligne.id }}">{{ ligne.nom_ligne }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Date de début</label>
+                    <input type="date" id="sub-date-debut" style="width:100%;">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Date de fin (optionnel)</label>
+                    <input type="date" id="sub-date-fin" style="width:100%;">
+                </div>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="btn-primary" onclick="submitSubscription()">
+                    <i class="fas fa-plus"></i> Ajouter l'abonnement
+                </button>
+            </div>
+            <p id="sub-msg" style="margin-top:10px;display:none;"></p>
+        </div>
+    </div>
+</main>
+<script>
+function submitSubscription() {
+    const ligneId = document.getElementById('select-ligne').value;
+    const dateDebut = document.getElementById('sub-date-debut').value;
+    const dateFin = document.getElementById('sub-date-fin').value;
+    const msg = document.getElementById('sub-msg');
+    if (!ligneId || !dateDebut) {
+        msg.textContent = 'Veuillez choisir une ligne et une date de début.';
+        msg.style.color = '#ef4444';
+        msg.style.display = 'block';
+        return;
+    }
+    fetch('{% url "gestion_transport:subscribe_to_line" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: JSON.stringify({student_id: '{{ student_id }}', ligne_id: ligneId, date_debut: dateDebut, date_fin: dateFin || null})
+    })
+    .then(r => r.json())
+    .then(data => {
+        msg.style.display = 'block';
+        if (data.success) {
+            msg.textContent = data.message;
+            msg.style.color = '#16a34a';
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            msg.textContent = data.error || 'Erreur lors de l\'abonnement.';
+            msg.style.color = '#ef4444';
+        }
+    });
+}
+</script>
+{% endblock %}

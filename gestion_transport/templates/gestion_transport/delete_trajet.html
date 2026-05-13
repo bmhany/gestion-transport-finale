@@ -1,0 +1,62 @@
+{% extends "gestion_transport/base.html" %}
+
+{% block title %}{{ title }} - Transport Universitaire{% endblock %}
+
+{% block content %}
+<div class="modal-overlay">
+    <div class="modal-wrapper">
+        <div class="modal-card">
+            <div class="panel-heading">
+                <div>
+                    <h2><i class="fas fa-exclamation-triangle"></i> {{ title }}</h2>
+                    <p>Confirmer la suppression du trajet</p>
+                </div>
+            </div>
+
+            <div class="form-card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Attention !</strong> Vous allez supprimer un trajet.
+                </div>
+
+                <div class="confirmation-details">
+                    <h3>Details du trajet :</h3>
+                    <ul>
+                        <li><strong>Bus :</strong> {{ trajet.bus.numero_immatriculation }}</li>
+                        <li><strong>Ligne :</strong> {{ trajet.ligne.nom_ligne }}</li>
+                        <li><strong>Date :</strong> {{ trajet.date_trajet|date:"d/m/Y" }}</li>
+                        <li><strong>Horaire :</strong> {{ trajet.horaire.heure_depart|time:"H:i" }} - {{ trajet.horaire.heure_arrivee|time:"H:i" }} ({{ trajet.horaire.get_sens_display }})</li>
+                        <li><strong>Retard :</strong> {{ trajet.retard_minutes }} min</li>
+                    </ul>
+                </div>
+
+                {% if reservations_count > 0 or incidents_count > 0 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Impact de la suppression :</strong>
+                            {% if reservations_count > 0 %}<div>{{ reservations_count }} reservation{{ reservations_count|pluralize }} associee{{ reservations_count|pluralize }} sera/supprimee.</div>{% endif %}
+                            {% if incidents_count > 0 %}<div>{{ incidents_count }} incident{{ incidents_count|pluralize }} associe{{ incidents_count|pluralize }} sera/supprime{{ incidents_count|pluralize }}.</div>{% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Confirmer la suppression
+                        </button>
+                        <a href="{% url 'gestion_transport:bus_trajets' bus.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Styles moved to static/gestion_transport/style.css -->
+{% endblock %}

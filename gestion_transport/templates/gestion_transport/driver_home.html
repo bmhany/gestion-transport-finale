@@ -1,0 +1,570 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espace Conducteur - Transport Universitaire</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'gestion_transport/style.css' %}?v=8">
+    <style>
+        .driver-action-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.62);
+            z-index: 1200;
+            padding: 14px;
+        }
+        .driver-action-modal.is-open {
+            display: flex;
+        }
+        .driver-action-card {
+            width: min(520px, 100%);
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+            padding: 16px;
+        }
+        .driver-action-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .driver-action-head h4 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+        .driver-action-close {
+            border: 0;
+            background: #eef2ff;
+            color: #1f2937;
+            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            font-weight: 700;
+        }
+        .driver-action-grid {
+            display: grid;
+            gap: 10px;
+        }
+        .driver-action-grid label {
+            font-size: 0.85rem;
+            color: #374151;
+            font-weight: 600;
+        }
+        .driver-action-grid input,
+        .driver-action-grid textarea,
+        .driver-action-grid select {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+        }
+        .driver-action-grid textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+        .driver-action-foot {
+            margin-top: 14px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .driver-action-foot .btn-cancel {
+            background: #e5e7eb;
+            color: #111827;
+        }
+    </style>
+</head>
+<body class="page-driver-home" data-dark="0"
+      data-login-url="{% url 'gestion_transport:driver_interface' %}"
+      data-logout-url="{% url 'gestion_transport:driver_logout' %}"
+      data-driver-retard-url="{% url 'gestion_transport:driver_set_retard' %}"
+      data-driver-incident-url="{% url 'gestion_transport:driver_report_incident' %}"
+    data-driver-status-url="{% url 'gestion_transport:driver_update_trajet_status' %}"
+    data-driver-save-route-distance-url="{% url 'gestion_transport:driver_save_route_distance' %}">
+<div id="appLayout">
+    {% csrf_token %}
+    <aside>
+        <div class="sidebar-logo">
+            <i class="fas fa-bus"></i>
+            <span>MyCous</span>
+        </div>
+        <nav>
+            <button class="nav-btn active" data-panel="dashboard" type="button" onclick="showDriverPanel('dashboard', this)">
+                <i class="fas fa-tachometer-alt"></i> Tableau de Bord
+            </button>
+            <button class="nav-btn" data-panel="trajets" type="button" onclick="showDriverPanel('trajets', this)">
+                <i class="fas fa-route"></i> Mes Trajets
+            </button>
+            <button class="nav-btn" data-panel="carte" type="button" onclick="showDriverPanel('carte', this)">
+                <i class="fas fa-map"></i> Carte
+            </button>
+            <button class="nav-btn" data-panel="affectations" type="button" onclick="showDriverPanel('affectations', this)">
+                <i class="fas fa-bus"></i> Mes Affectations
+            </button>
+            <button class="nav-btn" data-panel="historique" type="button" onclick="showDriverPanel('historique', this)">
+                <i class="fas fa-clock-rotate-left"></i> Historique
+            </button>
+            <button class="nav-btn" data-panel="profil" type="button" onclick="showDriverPanel('profil', this)">
+                <i class="fas fa-user-circle"></i> Mon Profil
+            </button>
+        </nav>
+        <div class="sidebar-bottom">
+            <button type="button" onclick="toggleDark(this)">
+                <i class="fas fa-moon"></i> Mode Sombre
+            </button>
+            <button type="button" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Deconnexion
+            </button>
+        </div>
+    </aside>
+
+    <div class="main-col">
+        <header>
+            <h2><i class="fas fa-id-card page-title-icon"></i> Espace Conducteur</h2>
+            <div class="header-actions">
+                <button type="button" class="driver-tour-toggle" onclick="toggleDriverTourMode(this)">
+                    <i class="fas fa-compass"></i> Mode Tournee
+                </button>
+                <div class="user-badge badge-driver-home">
+                    <i class="fas fa-id-card"></i> {{ driver_name }}
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section id="driver-dashboard-panel" class="driver-panel panel-visible">
+                <div class="driver-hero">
+                    <div>
+                        <h3>Bonjour {{ conducteur.prenom }}, bonne tournee.</h3>
+                        <p>Vue synthetique de votre activite du {{ today_date }}.</p>
+                    </div>
+                    <div class="driver-hero-next">
+                        <span class="driver-next-label">Prochain depart</span>
+                        {% if next_trajet %}
+                            <strong>{{ next_trajet.trajet.horaire.heure_depart|time:"H:i" }} - {{ next_trajet.trajet.ligne.nom_ligne }}</strong>
+                            <small>Bus {{ next_trajet.trajet.bus.numero_immatriculation }} ({{ next_trajet.trajet.horaire.get_sens_display }})</small>
+                        {% else %}
+                            <strong>Aucun depart restant</strong>
+                            <small>Votre planning du jour est termine.</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="stats-row stats-row-driver">
+                    <div class="stat-chip stat-total"><div class="stat-icon"><i class="fas fa-route"></i></div><div><div class="stat-num">{{ stats_today_trajets }}</div><div class="stat-lbl">Trajets du jour</div></div></div>
+                    <div class="stat-chip stat-total"><div class="stat-icon"><i class="fas fa-link"></i></div><div><div class="stat-num">{{ stats_associated_trajets }}</div><div class="stat-lbl">Trajets associés</div></div></div>
+                    <div class="stat-chip stat-abonnes"><div class="stat-icon"><i class="fas fa-play-circle"></i></div><div><div class="stat-num">{{ stats_upcoming_today }}</div><div class="stat-lbl">À venir</div></div></div>
+                    <div class="stat-chip stat-non-abonnes"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div><div class="stat-num">{{ stats_completed_today }}</div><div class="stat-lbl">Terminés</div></div></div>
+                    <div class="stat-chip stat-total"><div class="stat-icon"><i class="fas fa-triangle-exclamation"></i></div><div><div class="stat-num">{{ stats_today_incidents }}</div><div class="stat-lbl">Incidents du jour</div></div></div>
+                </div>
+
+                <section class="panel driver-quick-panel">
+                    <div class="driver-quick-head">
+                        <h3><i class="fas fa-bolt"></i> Actions rapides</h3>
+                        {% if quick_action_row %}
+                            <span class="driver-quick-target">Trajet cible: {{ quick_action_row.trajet.horaire.heure_depart|time:"H:i" }} - {{ quick_action_row.trajet.ligne.nom_ligne }}</span>
+                        {% else %}
+                            <span class="driver-quick-target">Aucun trajet disponible aujourd'hui</span>
+                        {% endif %}
+                    </div>
+                    <div class="driver-quick-grid">
+                        <button type="button" class="driver-quick-btn quick-depart js-driver-status" data-action="depart" {% if not quick_action_row or not quick_action_row.can_mark_depart %}disabled{% endif %} {% if quick_action_row %}data-trajet-id="{{ quick_action_row.trajet.id }}"{% endif %}>
+                            <i class="fas fa-play"></i> Marquer départ
+                        </button>
+                        <button type="button" class="driver-quick-btn quick-arrivee js-driver-status" data-action="arrivee" {% if not quick_action_row or not quick_action_row.can_mark_arrivee %}disabled{% endif %} {% if quick_action_row %}data-trajet-id="{{ quick_action_row.trajet.id }}"{% endif %}>
+                            <i class="fas fa-flag-checkered"></i> Marquer arrivée
+                        </button>
+                        <button type="button" class="driver-quick-btn quick-retard js-driver-retard" {% if not quick_action_row %}disabled{% endif %} {% if quick_action_row %}data-trajet-id="{{ quick_action_row.trajet.id }}"{% endif %}>
+                            <i class="fas fa-stopwatch"></i> Déclarer retard
+                        </button>
+                        <button type="button" class="driver-quick-btn quick-incident js-driver-incident" {% if not quick_action_row %}disabled{% endif %} {% if quick_action_row %}data-trajet-id="{{ quick_action_row.trajet.id }}"{% endif %}>
+                            <i class="fas fa-triangle-exclamation"></i> Signaler incident
+                        </button>
+                    </div>
+                </section>
+
+                <div class="driver-kpi-grid">
+                    <article class="driver-kpi-card punctuality">
+                        <span>Ponctualité (30 jours)</span>
+                        <strong>{{ stats_punctuality_rate }}%</strong>
+                        <small>Trajets sans retard déclaré</small>
+                    </article>
+                    <article class="driver-kpi-card retard">
+                        <span>Retard moyen (30 jours)</span>
+                        <strong>{{ stats_avg_retard_recent }} min</strong>
+                        <small>Moyenne calculée sur les trajets passés</small>
+                    </article>
+                    <article class="driver-kpi-card fiabilite">
+                        <span>Score de fiabilité</span>
+                        <strong>{{ stats_fiabilite_score }}/100</strong>
+                        <small>Basé sur ponctualité + complétion</small>
+                    </article>
+                    <article class="driver-kpi-card completion">
+                        <span>Taux de complétion</span>
+                        <strong>{{ stats_completion_rate }}%</strong>
+                        <small>Trajets effectués jusqu'à arrivée</small>
+                    </article>
+                </div>
+
+                <div class="driver-grid-two driver-grid-priority">
+                    <section class="panel driver-timeline-panel">
+                        <h3><i class="fas fa-stream"></i> Timeline de la journée</h3>
+                        <div class="driver-timeline-list">
+                            {% for row in today_rows %}
+                                <article class="driver-timeline-item {{ row.status_key }}">
+                                    <div class="driver-timeline-time">{{ row.trajet.horaire.heure_depart|time:"H:i" }}</div>
+                                    <div class="driver-timeline-body">
+                                        <strong>{{ row.trajet.ligne.nom_ligne }}</strong>
+                                        <small>Bus {{ row.trajet.bus.numero_immatriculation }} - {{ row.trajet.horaire.get_sens_display }}</small>
+                                    </div>
+                                    <span class="chip {{ row.status_class }}">{{ row.status_label }}</span>
+                                </article>
+                            {% empty %}
+                                <p class="driver-empty-block">Aucun trajet prévu aujourd'hui.</p>
+                            {% endfor %}
+                        </div>
+                    </section>
+
+                    <section class="panel driver-upcoming-panel">
+                        <h3><i class="fas fa-hourglass-half"></i> Prochains trajets</h3>
+                        <div class="driver-upcoming-list">
+                            {% for row in upcoming_preview_rows %}
+                                <article class="driver-upcoming-item">
+                                    <div>
+                                        <strong>{{ row.trajet.horaire.heure_depart|time:"H:i" }} - {{ row.trajet.ligne.nom_ligne }}</strong>
+                                        <small>Bus {{ row.trajet.bus.numero_immatriculation }} - {{ row.trajet.horaire.get_sens_display }}</small>
+                                    </div>
+                                    <span class="chip {{ row.status_class }}">{{ row.status_label }}</span>
+                                </article>
+                            {% empty %}
+                                <p class="driver-empty-block">Aucun trajet à venir pour aujourd'hui.</p>
+                            {% endfor %}
+                        </div>
+                    </section>
+                </div>
+
+                <div class="driver-grid-two">
+                    <section class="panel driver-mini-panel">
+                        <h3><i class="fas fa-bus"></i> Mes affectations par période</h3>
+                        {% for group in affectation_groups %}
+                            <div class="driver-period-group">
+                                <div class="driver-period-title">
+                                    <span>{{ group.label }}</span>
+                                    <span class="driver-period-count">{{ group.items|length }}</span>
+                                </div>
+                                <ul class="driver-mini-list">
+                                    {% for aff in group.items %}
+                                        <li>
+                                            <strong>{{ aff.ligne.nom_ligne }}</strong>
+                                            <span>Bus {{ aff.bus.numero_immatriculation }} à {{ aff.date_debut|date:"d/m/Y" }}{% if aff.date_fin %} au {{ aff.date_fin|date:"d/m/Y" }}{% else %} en cours{% endif %}</span>
+                                        </li>
+                                    {% empty %}
+                                        <li class="driver-empty">Aucune affectation dans cette période.</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                    </section>
+                    <section class="panel driver-mini-panel">
+                        <h3><i class="fas fa-id-card"></i> Carte conducteur</h3>
+                        <div class="driver-profile-card">
+                            <p><strong>ID:</strong> {{ driver_id }}</p>
+                            <p><strong>Nom:</strong> {{ driver_name }}</p>
+                            <p><strong>Email:</strong> {{ driver_email }}</p>
+                            <p><strong>Telephone:</strong> {{ driver_phone|default:'Non renseigne' }}</p>
+                        </div>
+                        <div class="driver-compact-feed">
+                            <h4><i class="fas fa-bell"></i> Historique rapide</h4>
+                            <ul>
+                                {% for item in recent_activity_feed %}
+                                    <li>
+                                        <span class="feed-pill {% if item.kind == 'incident' %}incident{% else %}retard{% endif %}">
+                                            {% if item.kind == 'incident' %}Incident{% else %}Retard{% endif %}
+                                        </span>
+                                        <div>
+                                            <strong>{{ item.label }} - {{ item.line_name }}</strong>
+                                            <small>{{ item.details|truncatechars:70 }} • {{ item.timestamp|date:"d/m H:i" }}</small>
+                                        </div>
+                                    </li>
+                                {% empty %}
+                                    <li class="driver-empty">Aucun incident ou retard récent.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="driver-trajets-panel" class="driver-panel panel-hidden">
+
+                <!-- Calendrier mensuel des trajets du conducteur -->
+                <section class="panel driver-calendar-shell">
+                    <div class="driver-calendar-toolbar">
+                        <div class="driver-calendar-month">
+                            <i class="fas fa-calendar"></i> {{ cal_month_label }}
+                        </div>
+                        <div class="driver-calendar-nav">
+                            <a class="btn btn-outline btn-compact" href="?{{ cal_prev_query }}">
+                                <i class="fas fa-chevron-left"></i> Mois précédent
+                            </a>
+                            <a class="btn btn-outline btn-compact" href="?{{ cal_next_query }}">
+                                Mois suivant <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="driver-calendar-legend">
+                        <span class="legend-item"><span class="legend-dot aller"></span> Aller</span>
+                        <span class="legend-item"><span class="legend-dot retour"></span> Retour</span>
+                        <span class="legend-item"><i class="fas fa-info-circle"></i> Cliquez sur une case pour voir l'agenda</span>
+                    </div>
+
+                    <div class="driver-calendar-grid">
+                        {% for label in cal_weekday_labels %}
+                            <div class="driver-calendar-weekday">{{ label }}</div>
+                        {% endfor %}
+                        {% for week in cal_weeks %}
+                            {% for day in week %}
+                                <div class="driver-calendar-day clickable {% if not day.in_current_month %}outside{% endif %} {% if day.is_today %}today{% endif %} {% if day.is_selected %}selected{% endif %}" data-url="?{{ day.query }}">
+                                    <div class="day-number">{{ day.date|date:"j" }}</div>
+                                    {% if day.trajets_count %}
+                                        <div class="day-badge">{{ day.trajets_count }} trajet{% if day.trajets_count != 1 %}s{% endif %}</div>
+                                        {% for t in day.trajets|slice:":3" %}
+                                            <div class="trajet-chip {{ t.horaire.sens }}">
+                                                <span class="trajet-line trajet-time">{{ t.horaire.heure_depart|time:"H:i" }}</span>
+                                                <span class="trajet-line">{{ t.ligne.nom_ligne }}</span>
+                                                <span class="trajet-line">Bus {{ t.bus.numero_immatriculation }}</span>
+                                            </div>
+                                        {% endfor %}
+                                        {% if day.trajets_count > 3 %}
+                                            <div class="trajet-overflow">+{{ day.trajets_count|add:"-3" }} de plus</div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="driver-calendar-empty">Aucun trajet</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- Agenda du jour sélectionné -->
+                <section id="agenda-panel" class="panel driver-agenda-panel">
+                    <div class="driver-agenda-title">
+                        <i class="fas fa-calendar-day"></i> Agenda du {{ cal_selected_day|date:"j F Y" }}
+                    </div>
+                    {% if cal_agenda_slots %}
+                        <table class="agenda-table">
+                            <thead>
+                                <tr>
+                                    <th>Horaire</th>
+                                    <th>Sens</th>
+                                    <th>Ligne</th>
+                                    <th>Bus</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for slot in cal_agenda_slots %}
+                                    <tr>
+                                        <td><span class="agenda-time">{{ slot.heure_depart }} - {{ slot.heure_arrivee }}</span></td>
+                                        <td><span class="agenda-sens {{ slot.sens }}">{{ slot.sens_display }}</span></td>
+                                        <td>{{ slot.ligne_nom }}</td>
+                                        <td><span class="agenda-bus-chip">{{ slot.bus_immat }}</span></td>
+                                        <td><span class="chip {{ slot.status_class }}">{{ slot.status_label }}</span></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="u-inline-164">Aucun trajet pour cette date.</p>
+                    {% endif %}
+                </section>
+
+                <!-- Trajets du jour (avec actions) -->
+                <section class="panel">
+                    <h3><i class="fas fa-calendar-day"></i> Trajets d'aujourd'hui - {{ today_date }}</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Heure</th><th>Ligne</th><th>Bus</th><th>Retard</th><th>Statut</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for row in today_rows %}
+                                <tr id="driver-trajet-{{ row.trajet.id }}" data-trajet-id="{{ row.trajet.id }}">
+                                    <td>{{ row.trajet.horaire.heure_depart|time:"H:i" }} - {{ row.trajet.horaire.heure_arrivee|time:"H:i" }}</td>
+                                    <td>{{ row.trajet.ligne.nom_ligne }} ({{ row.trajet.horaire.get_sens_display }})</td>
+                                    <td>{{ row.trajet.bus.numero_immatriculation }}</td>
+                                    <td class="js-retard-cell">{{ row.trajet.retard_minutes }} min</td>
+                                    <td><span class="chip js-status-chip {{ row.status_class }}">{{ row.status_label }}</span></td>
+                                    <td>
+                                        <div class="driver-actions-wrap">
+                                            <button type="button" class="act-btn act-view js-driver-status" data-action="depart" {% if not row.can_mark_depart %}disabled{% endif %} title="Marquer depart"><i class="fas fa-play"></i></button>
+                                            <button type="button" class="act-btn act-edit js-driver-status" data-action="arrivee" {% if not row.can_mark_arrivee %}disabled{% endif %} title="Marquer arrivee"><i class="fas fa-flag-checkered"></i></button>
+                                            <button type="button" class="act-btn act-edit js-driver-retard" title="Declarer retard"><i class="fas fa-stopwatch"></i></button>
+                                            <button type="button" class="act-btn act-del js-driver-incident" title="Signaler incident"><i class="fas fa-triangle-exclamation"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="6" class="u-inline-164">Aucun trajet programme aujourd'hui.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+
+            </section>
+
+            <section id="driver-carte-panel" class="driver-panel panel-hidden">
+                <section class="panel">
+                    <h3><i class="fas fa-map-location-dot"></i> Carte et itinéraire</h3>
+                    <div class="driver-route-panel">
+                        <div class="driver-route-controls">
+                            <label for="route-select">Choisir un trajet du jour</label>
+                            <select id="route-select">
+                                <option value="">Sélectionnez un trajet</option>
+                                {% for option in route_options %}
+                                    <option value="{{ option.trajet_id }}"
+                                            data-lat-depart="{{ option.depart_lat }}"
+                                            data-lng-depart="{{ option.depart_lng }}"
+                                            data-lat-arrivee="{{ option.arrivee_lat }}"
+                                            data-lng-arrivee="{{ option.arrivee_lng }}"
+                                            data-depart-nom="{{ option.depart_nom }}"
+                                            data-arrivee-nom="{{ option.arrivee_nom }}"
+                                            data-waypoints='{{ option.waypoints_json|escapejs }}'
+                                            data-line-distance="{{ option.line_distance_km }}"
+                                            {% if not option.available %}disabled{% endif %}>
+                                        {{ option.label }}{% if not option.available %} – Stations GPS manquantes{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <button id="route-calc-button" class="btn btn-primary" type="button">Calculer l'itinéraire</button>
+                        </div>
+                        <div id="route-map" class="driver-route-map"></div>
+                        <div id="route-info" class="route-info">Sélectionnez un trajet pour calculer le meilleur itinéraire.</div>
+                    </div>
+                </section>
+            </section>
+
+            <section id="driver-affectations-panel" class="driver-panel panel-hidden">
+                <section class="panel">
+                    <h3><i class="fas fa-bus"></i> Mes affectations</h3>
+                    {% for group in affectation_groups %}
+                        <div class="driver-period-card">
+                            <div class="driver-period-head">
+                                <h4>{{ group.label }}</h4>
+                                <span class="driver-period-count">{{ group.items|length }}</span>
+                            </div>
+                            <table>
+                                <thead><tr><th>Bus</th><th>Ligne</th><th>Date debut</th><th>Date fin</th></tr></thead>
+                                <tbody>
+                                    {% for aff in group.items %}
+                                        <tr>
+                                            <td>{{ aff.bus.numero_immatriculation }}</td>
+                                            <td>{{ aff.ligne.nom_ligne }}</td>
+                                            <td>{{ aff.date_debut|date:"d/m/Y" }}</td>
+                                            <td>{% if aff.date_fin %}{{ aff.date_fin|date:"d/m/Y" }}{% else %}<span class="chip chip-green">En cours</span>{% endif %}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="u-inline-164">Aucune affectation dans cette période.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endfor %}
+                </section>
+            </section>
+
+            <section id="driver-historique-panel" class="driver-panel panel-hidden">
+                <section class="panel">
+                    <h3><i class="fas fa-history"></i> Historique des trajets</h3>
+                    <form method="get" class="driver-history-filters">
+                        <input type="hidden" name="panel" value="historique">
+                        <div class="driver-history-grid">
+                            <div><label>Date debut</label><input type="date" name="history_date_from" value="{{ history_date_from }}"></div>
+                            <div><label>Date fin</label><input type="date" name="history_date_to" value="{{ history_date_to }}"></div>
+                            <div><label>Ligne</label><select name="history_ligne_id"><option value="">Toutes</option>{% for ligne in history_lignes_options %}<option value="{{ ligne.id }}" {% if history_ligne_id == ligne.id|stringformat:'s' %}selected{% endif %}>{{ ligne.nom_ligne }}</option>{% endfor %}</select></div>
+                            <div><label>Bus</label><select name="history_bus_id"><option value="">Tous</option>{% for bus in history_bus_options %}<option value="{{ bus.id }}" {% if history_bus_id == bus.id|stringformat:'s' %}selected{% endif %}>{{ bus.numero_immatriculation }}</option>{% endfor %}</select></div>
+                            <div><label>Statut</label><select name="history_status"><option value="">Tous</option><option value="a_venir" {% if history_status == 'a_venir' %}selected{% endif %}>A venir</option><option value="en_attente" {% if history_status == 'en_attente' %}selected{% endif %}>En attente</option><option value="en_route" {% if history_status == 'en_route' %}selected{% endif %}>En route</option><option value="arrivee" {% if history_status == 'arrivee' %}selected{% endif %}>Arrive</option><option value="passe" {% if history_status == 'passe' %}selected{% endif %}>Passe</option></select></div>
+                        </div>
+                        <div class="driver-history-actions">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrer</button>
+                            <a href="{% url 'gestion_transport:driver_home' %}?panel=historique" class="btn btn-secondary">Reinitialiser</a>
+                        </div>
+                    </form>
+
+                    <table>
+                        <thead><tr><th>Date</th><th>Heure</th><th>Ligne</th><th>Bus</th><th>Retard</th><th>Statut</th></tr></thead>
+                        <tbody>
+                            {% for row in history_rows %}
+                                <tr>
+                                    <td>{{ row.trajet.date_trajet|date:"d/m/Y" }}</td>
+                                    <td>{{ row.trajet.horaire.heure_depart|time:"H:i" }} - {{ row.trajet.horaire.heure_arrivee|time:"H:i" }}</td>
+                                    <td>{{ row.trajet.ligne.nom_ligne }} ({{ row.trajet.horaire.get_sens_display }})</td>
+                                    <td>{{ row.trajet.bus.numero_immatriculation }}</td>
+                                    <td>{{ row.trajet.retard_minutes }} min</td>
+                                    <td><span class="chip {{ row.status_class }}">{{ row.status_label }}</span></td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="6" class="u-inline-164">Aucun trajet dans l'historique.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+
+            <section id="driver-profil-panel" class="driver-panel panel-hidden">
+                <section class="panel">
+                    <h3><i class="fas fa-user-circle"></i> Mon Profil</h3>
+                    <div class="driver-profile-layout">
+                        <div class="driver-profile-avatar"><i class="fas fa-id-card"></i></div>
+                        <div class="driver-profile-details">
+                            <div class="info-box"><div class="label">ID Conducteur</div><div class="value">{{ driver_id }}</div></div>
+                            <div class="info-box"><div class="label">Nom complet</div><div class="value">{{ driver_name }}</div></div>
+                            <div class="info-box"><div class="label">Email</div><div class="value">{{ driver_email }}</div></div>
+                            <div class="info-box"><div class="label">Telephone</div><div class="value">{{ driver_phone|default:'Non renseigne' }}</div></div>
+                        </div>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
+</div>
+
+<div id="driver-action-modal" class="driver-action-modal" aria-hidden="true">
+    <div class="driver-action-card" role="dialog" aria-modal="true" aria-labelledby="driver-action-title">
+        <div class="driver-action-head">
+            <h4 id="driver-action-title">Action conducteur</h4>
+            <button type="button" class="driver-action-close" id="driver-action-close" aria-label="Fermer">x</button>
+        </div>
+        <div class="driver-action-grid">
+            <div id="driver-action-retard-fields">
+                <label for="driver-retard-minutes">Minutes de retard (0 a 240)</label>
+                <input id="driver-retard-minutes" type="number" min="0" max="240" step="1" value="0">
+            </div>
+            <div id="driver-action-incident-fields">
+                <label for="driver-incident-type">Type d'incident (obligatoire)</label>
+                <input id="driver-incident-type" type="text" value="Technique" maxlength="100">
+                <label for="driver-incident-description">Description de l'incident (optionnelle)</label>
+                <textarea id="driver-incident-description" maxlength="1500" placeholder="Décrivez clairement l'incident..."></textarea>
+            </div>
+        </div>
+        <div class="driver-action-foot">
+            <button type="button" class="btn btn-cancel" id="driver-action-cancel">Annuler</button>
+            <button type="button" class="btn btn-primary" id="driver-action-submit">Valider</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{% static 'gestion_transport/app.js' %}?v=10"></script>
+</body>
+</html>

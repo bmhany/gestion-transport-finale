@@ -1,0 +1,162 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des Lignes - Transport Universitaire</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'gestion_transport/style.css' %}">
+</head>
+<body class="page-liste-lignes" data-dark="0"
+      data-login-url="{% url 'gestion_transport:admin_login' %}"
+      data-logout-url="{% url 'gestion_transport:admin_logout' %}"
+      data-logout-confirm="Êtes-vous sûr de vouloir vous déconnecter ?"
+      data-add-ligne-url="{% url 'gestion_transport:add_ligne' %}"
+      data-has-filters="{% if selected_statut or selected_etudiants_min or selected_description %}1{% else %}0{% endif %}">
+    <div id="appLayout" class="container-fluid px-0">
+        {% csrf_token %}
+        {% include 'gestion_transport/_admin_sidebar.html' with active_nav='lignes' %}
+        <div class="main-col d-flex flex-column">
+            <header class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h2>Liste des Lignes</h2>
+                <div class="user-badge badge-admin">
+                    <i class="fas fa-user-shield"></i>
+                    Administrateur
+                </div>
+            </header>
+            <main>
+                <div class="panel">
+                    <div class="filter-header">
+                        <h3><i class="fas fa-route"></i> Gestion des Lignes</h3>
+                        <div class="header-actions d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+                            <button type="button" id="toggleFilters" class="btn-filter-toggle">
+                                <i class="fas fa-filter"></i> Filtres
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+
+                            
+                            <button type="button" class="btn btn-outline" onclick="openAddLignePopup()">
+                                <i class="fas fa-plus"></i> Ajouter une ligne
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="filtersPanel" class="filters-panel hidden">
+                        <form method="get" class="filter-form">
+                            <div class="filter-grid row g-3">
+                                <div class="filter-item col-12 col-md-6 col-xl-4">
+                                    <label for="statut">
+                                        <i class="fas fa-info-circle"></i> Statut
+                                    </label>
+                                    <select name="statut" id="statut">
+                                        <option value="">Tous les statuts</option>
+                                        <option value="active" {% if selected_statut == 'active' %}selected{% endif %}>Actives uniquement</option>
+                                        <option value="inactive" {% if selected_statut == 'inactive' %}selected{% endif %}>Inactives uniquement</option>
+                                    </select>
+                                </div>
+
+                                <div class="filter-item col-12 col-md-6 col-xl-4">
+                                    <label for="etudiants_min">
+                                        <i class="fas fa-users"></i> Étudiants min.
+                                    </label>
+                                    <input type="number" name="etudiants_min" id="etudiants_min" value="{{ selected_etudiants_min }}" min="0" placeholder="Ex: 5">
+                                </div>
+
+                                <div class="filter-item col-12 col-md-6 col-xl-4">
+                                    <label for="description">
+                                        <i class="fas fa-file-alt"></i> Description
+                                    </label>
+                                    <input type="text" name="description" id="description" value="{{ selected_description }}" placeholder="Rechercher dans la description">
+                                </div>
+                            </div>
+
+                            <div class="filter-actions d-flex flex-wrap gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Appliquer les filtres
+                                </button>
+                                <button type="button" id="clearFilters" class="btn btn-outline">
+                                    <i class="fas fa-times"></i> Effacer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="line-list">
+                        {% for ligne_data in lignes_data %}
+                        <article class="line-card">
+                            <div class="line-card-head">
+                                <div class="line-icon"><i class="fas fa-route"></i></div>
+                                <div class="line-title-wrap">
+                                    <h4>{{ ligne_data.ligne.nom_ligne }}</h4>
+                                    <p>{{ ligne_data.ligne.description|default:"Aucune description"|truncatechars:120 }}</p>
+                                </div>
+                                <div class="line-status-wrap">
+                                    {% if ligne_data.is_active %}
+                                        <span class="status-badge status-active">
+                                            <i class="fas fa-check-circle"></i> Active
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge status-inactive">
+                                            <i class="fas fa-times-circle"></i> Inactive
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="line-meta-grid">
+                                <div class="line-meta-item">
+                                    <span class="meta-label"><i class="fas fa-users"></i> Étudiants actifs</span>
+                                    <strong>{{ ligne_data.nombre_etudiants }}</strong>
+                                </div>
+                                <div class="line-meta-item">
+                                    <span class="meta-label"><i class="fas fa-bus"></i> Bus affectés</span>
+                                    <strong>{{ ligne_data.nombre_bus }}</strong>
+                                </div>
+                                <div class="line-meta-item">
+                                    <span class="meta-label"><i class="fas fa-clock"></i> Horaires</span>
+                                    <strong>{{ ligne_data.horaires_count }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="line-actions">
+                                <button class="btn btn-outline" onclick="openFormPopup('{% url 'gestion_transport:horaires_ligne_detail' ligne_data.ligne.id %}', 'Voir les horaires', 'fas fa-clock')">
+                                    <i class="fas fa-clock"></i> Horaires
+                                </button>
+                                <a href="{% url 'gestion_transport:trajets_programmes' %}?ligne_id={{ ligne_data.ligne.id }}" class="btn btn-outline">
+                                    <i class="fas fa-route"></i> Trajets
+                                </a>
+                                <button class="btn btn-outline" onclick="openFormPopup('{% url 'gestion_transport:edit_ligne' ligne_data.ligne.id %}?popup=1&return_to={{ request.get_full_path|urlencode }}', 'Modifier la ligne', 'fas fa-edit')">
+                                    <i class="fas fa-edit"></i> Modifier
+                                </button>
+                                <button class="btn btn-outline btn-danger" onclick="openFormPopup('{% url 'gestion_transport:delete_ligne' ligne_data.ligne.id %}', 'Supprimer la ligne', 'fas fa-trash-alt')">
+                                    <i class="fas fa-trash-alt"></i> Supprimer
+                                </button>
+                            </div>
+                        </article>
+                        {% empty %}
+                        <div class="line-empty-state">
+                            <i class="fas fa-route"></i>
+                            <p>Aucune ligne trouvée</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="addLigneModal" class="hidden admin-form-modal" onclick="if(event.target===this){closeAddLignePopup();}">
+        <div class="admin-form-modal-card" role="dialog" aria-modal="true" aria-labelledby="addLigneModalTitle">
+            <div class="admin-form-modal-head">
+                <h3 id="addLigneModalTitle"><i class="fas fa-route"></i> Ajouter une ligne</h3>
+                <button type="button" class="admin-form-modal-close" onclick="closeAddLignePopup()" aria-label="Fermer">&times;</button>
+            </div>
+            <iframe id="addLigneFrame" class="admin-form-modal-frame" title="Formulaire Ajouter une ligne" src="about:blank"></iframe>
+        </div>
+    </div>
+
+    <script src="{% static 'gestion_transport/app.js' %}?v=15"></script>
+</body>
+</html>

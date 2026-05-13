@@ -1,0 +1,236 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<header>
+    <h2><i class="fas fa-calendar-day"></i> Trajets du jour</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-user-graduate"></i>
+        {{ student_name }}
+    </div>
+</header>
+<main>
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="num">{{ stats_upcoming_today }}</div>
+            <div class="lbl">Trajets réservés aujourd'hui</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ available_slots_count }}</div>
+            <div class="lbl">Créneaux disponibles</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ stats_active_subscriptions }}</div>
+            <div class="lbl">Lignes abonnées</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3><i class="fas fa-check-circle"></i> Mes réservations aujourd'hui — {{ today_date }}</h3>
+        <div class="student-cards-list">
+            {% for slot in upcoming_slots %}
+            <div class="student-data-card" id="reserved-slot-{{ slot.slot_key }}">
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Ligne</div>
+                    <div class="student-data-value">{{ slot.ligne_nom }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Sens</div>
+                    <div class="student-data-value muted">{{ slot.sens }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Départ - Arrivée</div>
+                    <div class="student-data-value">{{ slot.heure_depart }} - {{ slot.heure_arrivee }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Bus</div>
+                    <div class="student-data-value">{{ slot.bus }}</div>
+                </div>
+                <div class="student-data-actions" id="reserved-slot-status-{{ slot.slot_key }}">
+                    <span class="tag tag-active"><i class="fas fa-check"></i> Confirmé</span>
+                </div>
+                <div class="student-data-actions" id="reserved-slot-action-{{ slot.slot_key }}">
+                    <button
+                        type="button"
+                        class="btn-cancel"
+                        style="padding:8px 14px;border:none;border-radius:10px;"
+                        onclick="cancelStudentSlot('{{ slot.ligne_id }}', '{{ slot.horaire_id }}', '{{ slot.sens_code }}', '{{ slot.slot_key }}')">
+                        <i class="fas fa-xmark"></i> Annuler
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="student-data-empty">Aucun trajet réservé à venir aujourd'hui.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3><i class="fas fa-bus"></i> Créneaux disponibles sur mes lignes — {{ today_date }}</h3>
+        <div class="student-cards-list">
+            {% for slot in today_slots %}
+            <div class="student-data-card trip-available-card" id="today-slot-{{ slot.slot_key }}">
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Ligne</div>
+                    <div class="student-data-value">{{ slot.ligne_nom }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Sens</div>
+                    <div class="student-data-value muted">{{ slot.sens }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Départ - Arrivée</div>
+                    <div class="student-data-value">{{ slot.heure_depart }} - {{ slot.heure_arrivee }}</div>
+                </div>
+                <div class="student-data-cell">
+                    <div class="student-data-eyebrow">Places</div>
+                    <div class="student-data-value">{{ slot.total_capacity }}</div>
+                </div>
+                <div class="student-data-actions" id="today-slot-status-{{ slot.slot_key }}">
+                    {% if slot.is_past %}
+                        <span class="tag tag-inactive"><i class="fas fa-clock"></i> Passé</span>
+                    {% elif slot.reserved %}
+                        <span class="tag tag-active"><i class="fas fa-check"></i> Réservé</span>
+                    {% elif slot.same_time_locked %}
+                        <span class="tag tag-inactive"><i class="fas fa-lock"></i> Horaire déjà pris</span>
+                    {% else %}
+                        <span class="tag tag-pending"><i class="fas fa-circle-dot"></i> Disponible</span>
+                    {% endif %}
+                </div>
+                <div class="student-data-actions" id="today-slot-action-{{ slot.slot_key }}">
+                    {% if slot.is_past %}
+                        <span style="color:var(--muted);font-size:12px;">Indisponible</span>
+                    {% elif slot.reserved %}
+                        <button
+                            type="button"
+                            class="btn-cancel"
+                            style="padding:8px 14px;border:none;border-radius:10px;"
+                            onclick="cancelStudentSlot('{{ slot.ligne_id }}', '{{ slot.horaire_id }}', '{{ slot.sens_code }}', '{{ slot.slot_key }}')">
+                            <i class="fas fa-xmark"></i> Annuler
+                        </button>
+                    {% elif slot.same_time_locked %}
+                        <span style="color:var(--muted);font-size:12px;">Déjà réservé à {{ slot.heure_depart }}</span>
+                    {% else %}
+                        <button
+                            type="button"
+                            class="btn-save"
+                            style="padding:8px 14px;border:none;border-radius:10px;"
+                            onclick="reserveStudentSlot('{{ slot.ligne_id }}', '{{ slot.horaire_id }}', '{{ slot.sens_code }}', '{{ slot.slot_key }}')">
+                            <i class="fas fa-ticket"></i> Réserver
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="student-data-empty">Aucun créneau disponible aujourd'hui sur vos lignes abonnées.</div>
+            {% endfor %}
+        </div>
+    </div>
+</main>
+
+<script>
+function renderReserveButton(ligneId, horaireId, sens, slotKey) {
+    return `<button type="button" class="btn-save" style="padding:8px 14px;border:none;border-radius:10px;" onclick="reserveStudentSlot('${ligneId}', '${horaireId}', '${sens}', '${slotKey}')"><i class="fas fa-ticket"></i> Réserver</button>`;
+}
+
+function renderCancelButton(ligneId, horaireId, sens, slotKey) {
+    return `<button type="button" class="btn-cancel" style="padding:8px 14px;border:none;border-radius:10px;" onclick="cancelStudentSlot('${ligneId}', '${horaireId}', '${sens}', '${slotKey}')"><i class="fas fa-xmark"></i> Annuler</button>`;
+}
+
+function cancelStudentSlot(ligneId, horaireId, sens, slotKey) {
+    const actionCell = document.getElementById('today-slot-action-' + slotKey) || document.getElementById('reserved-slot-action-' + slotKey);
+    const statusCell = document.getElementById('today-slot-status-' + slotKey) || document.getElementById('reserved-slot-status-' + slotKey);
+
+    if (actionCell) {
+        actionCell.innerHTML = '<span style="color:var(--muted);font-size:12px;">Annulation...</span>';
+    }
+
+    fetch('{% url "gestion_transport:cancel_reservation_trajet" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            ligne_id: ligneId,
+            horaire_id: horaireId,
+            sens: sens
+        })
+    })
+    .then(function(response) {
+        return response.json().then(function(data) {
+            return { ok: response.ok, data: data };
+        });
+    })
+    .then(function(result) {
+        if (!result.ok || !result.data.success) {
+            throw new Error(result.data.error || result.data.message || 'Annulation impossible.');
+        }
+
+        if (statusCell) {
+            statusCell.innerHTML = '<span class="tag tag-pending"><i class="fas fa-circle-dot"></i> Disponible</span>';
+        }
+        if (actionCell) {
+            actionCell.innerHTML = '<span style="color:var(--muted);font-size:12px;">Mise à jour...</span>';
+        }
+
+        window.setTimeout(function() {
+            window.location.reload();
+        }, 400);
+    })
+    .catch(function(error) {
+        alert(error.message);
+        if (actionCell) {
+            actionCell.innerHTML = renderCancelButton(ligneId, horaireId, sens, slotKey);
+        }
+    });
+}
+
+function reserveStudentSlot(ligneId, horaireId, sens, slotKey) {
+    const actionCell = document.getElementById('today-slot-action-' + slotKey);
+    const statusCell = document.getElementById('today-slot-status-' + slotKey);
+
+    if (actionCell) {
+        actionCell.innerHTML = '<span style="color:var(--muted);font-size:12px;">Réservation...</span>';
+    }
+
+    fetch('{% url "gestion_transport:reserve_trajet" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            ligne_id: ligneId,
+            horaire_id: horaireId,
+            sens: sens
+        })
+    })
+    .then(function(response) {
+        return response.json().then(function(data) {
+            return { ok: response.ok, data: data };
+        });
+    })
+    .then(function(result) {
+        if (!result.ok || !result.data.success) {
+            throw new Error(result.data.error || result.data.message || 'Réservation impossible.');
+        }
+
+        if (statusCell) {
+            statusCell.innerHTML = '<span class="tag tag-active"><i class="fas fa-check"></i> Réservé</span>';
+        }
+        if (actionCell) {
+            actionCell.innerHTML = renderCancelButton(ligneId, horaireId, sens, slotKey);
+        }
+
+        window.setTimeout(function() {
+            window.location.reload();
+        }, 600);
+    })
+    .catch(function(error) {
+        alert(error.message);
+        if (actionCell) {
+            actionCell.innerHTML = renderReserveButton(ligneId, horaireId, sens, slotKey);
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "gestion_transport/base.html" %}
+{% load static %}
+
+{% block title %}Modifier le bus{% endblock %}
+
+{% block body_class %}page-modal-entities{% endblock %}
+
+{% block content %}
+<div class="entity-modal-backdrop">
+    <div class="entity-modal-card">
+        <div class="entity-modal-head">
+            <h2><i class="fas fa-edit"></i> Modifier le bus</h2>
+            <p>Mettez à jour les informations et les affectations du bus {{ bus.numero_immatriculation }}</p>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="entity-grid">
+                <div class="form-group">
+                    <label for="{{ form.numero_immatriculation.id_for_label }}">{{ form.numero_immatriculation.label }}</label>
+                    {{ form.numero_immatriculation }}
+                    {% if form.numero_immatriculation.errors %}
+                        <div class="error-text">{{ form.numero_immatriculation.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.marque.id_for_label }}">{{ form.marque.label }}</label>
+                    {{ form.marque }}
+                    {% if form.marque.errors %}
+                        <div class="error-text">{{ form.marque.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.capacite.id_for_label }}">{{ form.capacite.label }}</label>
+                    {{ form.capacite }}
+                    {% if form.capacite.errors %}
+                        <div class="error-text">{{ form.capacite.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.date_mise_service.id_for_label }}">{{ form.date_mise_service.label }}</label>
+                    {{ form.date_mise_service }}
+                    {% if form.date_mise_service.errors %}
+                        <div class="error-text">{{ form.date_mise_service.errors|join:', ' }}</div>
+                    {% endif %}
+                    <small class="helper">Optionnel - Laissez vide si inconnu</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.conducteur.id_for_label }}">{{ form.conducteur.label }}</label>
+                    {{ form.conducteur }}
+                    {% if form.conducteur.errors %}
+                        <div class="error-text">{{ form.conducteur.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="error-box">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <!-- Section des affectations actuelles -->
+            {% if affectations %}
+            <div class="affect-current-card">
+                <h3 class="affect-current-title">
+                    Affectations actuelles
+                </h3>
+                <ul class="affect-current-list">
+                    {% for affectation in affectations %}
+                    <li class="affect-current-item">
+                        <div>
+                            <div class="affect-current-line">{{ affectation.ligne.nom }}</div>
+                            <div class="affect-current-date">
+                                {{ affectation.date_debut|date:"d/m/Y" }} - 
+                                {% if affectation.date_fin %}{{ affectation.date_fin|date:"d/m/Y" }}{% else %}<em>En cours</em>{% endif %}
+                            </div>
+                        </div>
+                        {% comment %} <div class="affect-current-actions">
+                        
+                            <a href="{% url 'gestion_transport:edit_affectation' affectation.id %}" class="affect-btn-edit">Modifier</a>
+                            <a href="{% url 'gestion_transport:delete_affectation' affectation.id %}" class="affect-btn-delete">Supprimer</a>
+                        </div> {% endcomment %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            <div class="form-actions">
+                <button type="submit">Enregistrer les modifications</button>
+                <a href="{% url 'gestion_transport:liste_bus_affectations' %}" class="js-popup-cancel" data-popup-cancel="1">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

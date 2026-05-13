@@ -1,0 +1,51 @@
+{% extends 'gestion_transport/student_home.html' %}
+{% block student_content %}
+<header>
+    <h2><i class="fas fa-bell"></i> Notifications</h2>
+    <div class="user-badge badge-student">
+        <i class="fas fa-user-graduate"></i>
+        {{ student_name }}
+    </div>
+</header>
+<main>
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="num">{{ notifications_count }}</div>
+            <div class="lbl">Alertes récentes</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ urgent_alert_count }}</div>
+            <div class="lbl">Incidents signalés</div>
+        </div>
+        <div class="stat">
+            <div class="num">{{ notifications_count|add:"-"|add:urgent_alert_count|default:0 }}</div>
+            <div class="lbl">Retards</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3><i class="fas fa-triangle-exclamation"></i> Alertes sur mes lignes (3 derniers jours)</h3>
+        {% if notifications_feed %}
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+            {% for item in notifications_feed %}
+            <div style="padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:var(--card);">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                    {% if item.type == 'incident' %}
+                        <span class="tag tag-urgent"><i class="fas fa-triangle-exclamation"></i> Incident</span>
+                    {% else %}
+                        <span class="tag tag-pending"><i class="fas fa-clock"></i> Retard</span>
+                    {% endif %}
+                    <strong style="color:var(--text);">{{ item.title }}</strong>
+                    <span style="color:var(--muted);font-size:12px;margin-left:auto;">{{ item.when|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div style="color:var(--muted);font-size:13px;margin-bottom:4px;">{{ item.message }}</div>
+                <div style="font-size:12px;color:var(--muted);"><i class="fas fa-route"></i> Ligne : <strong style="color:var(--text);">{{ item.line }}</strong></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--muted);margin-top:8px;">Aucune alerte récente sur vos lignes abonnées.</p>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
