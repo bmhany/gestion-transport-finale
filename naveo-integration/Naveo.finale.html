@@ -489,7 +489,7 @@
     }
     async function loginAdmin(){
         try{
-            await apiFetch('/auth/admin',{method:'POST',body:JSON.stringify({password:document.getElementById('adminPass').value})});
+            await apiFetch('/auth/admin/',{method:'POST',body:JSON.stringify({password:document.getElementById('adminPass').value})});
             await loadBootstrap();
             enterApp('admin','Admin');
         }catch(e){ showErr('adminErr',e.message||'Wrong password'); }
@@ -506,7 +506,7 @@
         const pass=document.getElementById('studentPass').value;
         if(!pass) return showErr('studentErr','Saisissez le mot de passe');
         try{
-            const r=await apiFetch('/auth/student',{method:'POST',body:JSON.stringify({studentId:id,password:pass})});
+            const r=await apiFetch('/auth/student/',{method:'POST',body:JSON.stringify({studentId:id,password:pass})});
             await loadBootstrap();
             enterApp('student',r.uid||id);
         }catch(e){ showErr('studentErr',e.message||'Login failed'); }
@@ -515,7 +515,7 @@
         const id=document.getElementById('driverId').value.trim().toUpperCase();
         const dpass=document.getElementById('driverPass').value;
         try{
-            const r=await apiFetch('/auth/driver',{method:'POST',body:JSON.stringify({driverId:id,password:dpass})});
+            const r=await apiFetch('/auth/driver/',{method:'POST',body:JSON.stringify({driverId:id,password:dpass})});
             await loadBootstrap();
             enterApp('driver',r.uid||id);
         }catch(e){ showErr('driverErr',e.message||'Driver ID not found'); }
