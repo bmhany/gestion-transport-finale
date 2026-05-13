@@ -96,6 +96,71 @@ class EtudiantRegistrationForm(forms.ModelForm):
             etudiant.save()
         return etudiant
 
+
+class EtudiantAdminForm(forms.ModelForm):
+    """Admin Django : le mot de passe saisi est toujours chiffré (set_password), sinon la connexion échoue."""
+
+    mot_de_passe = forms.CharField(
+        label='Mot de passe',
+        widget=forms.PasswordInput(render_value=False),
+        required=False,
+        help_text='Obligatoire pour un nouvel étudiant. En modification, laisser vide pour ne pas changer.',
+    )
+
+    class Meta:
+        model = Etudiant
+        fields = ['student_number', 'nom', 'prenom', 'email', 'telephone']
+
+    def clean(self):
+        cleaned = super().clean()
+        pwd = (cleaned.get('mot_de_passe') or '').strip()
+        if not self.instance.pk and not pwd:
+            raise ValidationError({'mot_de_passe': 'Renseignez un mot de passe pour le nouvel étudiant.'})
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        pwd = (self.cleaned_data.get('mot_de_passe') or '').strip()
+        if pwd:
+            instance.set_password(pwd)
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
+class ConducteurAdminForm(forms.ModelForm):
+    """Même principe que pour les étudiants : mot de passe chiffré à l'enregistrement."""
+
+    mot_de_passe = forms.CharField(
+        label='Mot de passe',
+        widget=forms.PasswordInput(render_value=False),
+        required=False,
+        help_text='Obligatoire pour un nouveau conducteur. En modification, laisser vide pour ne pas changer.',
+    )
+
+    class Meta:
+        model = Conducteur
+        fields = ['driver_id', 'nom', 'prenom', 'email', 'telephone']
+
+    def clean(self):
+        cleaned = super().clean()
+        pwd = (cleaned.get('mot_de_passe') or '').strip()
+        if not self.instance.pk and not pwd:
+            raise ValidationError({'mot_de_passe': 'Renseignez un mot de passe pour le nouveau conducteur.'})
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        pwd = (self.cleaned_data.get('mot_de_passe') or '').strip()
+        if pwd:
+            instance.set_password(pwd)
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
 class EtudiantEditForm(forms.ModelForm):
     class Meta:
         model = Etudiant

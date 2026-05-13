@@ -1,4 +1,5 @@
 from django.contrib import admin
+from .forms import EtudiantAdminForm, ConducteurAdminForm
 from .models import (
     Etudiant, Bus, Ligne, Station, Horaire,
     AffectationEtudiantLigne, AffectationBusLigne,
@@ -8,14 +9,16 @@ from .models import (
 )
 @admin.register(Conducteur)
 class ConducteurAdmin(admin.ModelAdmin):
-    list_display = ['prenom', 'nom', 'driver_id']
+    form = ConducteurAdminForm
+    list_display = ['driver_id', 'prenom', 'nom', 'email', 'telephone']
     search_fields = ['prenom', 'nom', 'driver_id']
     list_filter = ['prenom', 'nom']
 
 @admin.register(Etudiant)
 class EtudiantAdmin(admin.ModelAdmin):
-    list_display = ['nom', 'prenom', 'email', 'telephone', 'date_inscription']
-    search_fields = ['nom', 'prenom', 'email']
+    form = EtudiantAdminForm
+    list_display = ['student_number', 'nom', 'prenom', 'email', 'telephone', 'date_inscription']
+    search_fields = ['student_number', 'nom', 'prenom', 'email']
     list_filter = ['date_inscription']
 
 @admin.register(Bus)

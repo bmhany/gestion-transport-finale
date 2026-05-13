@@ -19,8 +19,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
+from transport.naveo import naveo_portail
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('naveo/', naveo_portail),
+    path('api/v1/', include('gestion_transport.api_v1')),
     path('', include('gestion_transport.urls')),
 ]
 

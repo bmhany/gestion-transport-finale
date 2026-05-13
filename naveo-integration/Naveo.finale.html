@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naveo • Transport Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;transition:background-color .3s,color .3s,border-color .3s}
+        body{font-family:'Segoe UI',sans-serif;background:#f1f5f9;color:#1e293b;height:100vh;overflow:hidden}
+        :root{--brand:#0ea5e9;--brand2:#0369a1;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--sidebar:#082f49}
+        [data-dark="1"]{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f1f5f9;--muted:#94a3b8;--sidebar:#0c2340}
+        .card{background:var(--card);border:1px solid var(--border);color:var(--text)}
+        .muted{color:var(--muted)}
+        input,select,textarea{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;width:100%;font-size:13px;outline:none}
+        input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(164,30,30,.15)}
+        .hidden{display:none!important}
+
+        /* ===== LOADING SCREEN ===== */
+        #loadingScreen{
+            position:fixed;inset:0;z-index:200;
+            background:linear-gradient(135deg,#082f49 0%,#0c4a6e 50%,#082f49 100%);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            overflow:hidden;
+        }
+        .loader-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+        .lp1{position:absolute;top:8%;left:8%;width:120px;height:120px;background:rgba(255,255,255,.04);border-radius:50%;filter:blur(30px);animation:lpulse 3s ease-in-out infinite}
+        .lp2{position:absolute;bottom:15%;right:8%;width:180px;height:180px;background:rgba(14,165,233,.07);border-radius:50%;filter:blur(40px);animation:lpulse 3s ease-in-out infinite .7s}
+        .lp3{position:absolute;top:50%;left:35%;width:90px;height:90px;background:rgba(164,30,30,.08);border-radius:50%;filter:blur(25px);animation:lpulse 3s ease-in-out infinite 1.2s}
+        @keyframes lpulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
+
+        .bus-float{animation:busFloat 2s ease-in-out infinite}
+        @keyframes busFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+        .pulse-ring-outer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+        .pulse-ring-el{width:140px;height:140px;border:2px solid rgba(14,165,233,.4);border-radius:50%;animation:pring 1.8s ease-out infinite}
+        @keyframes pring{0%{transform:scale(.8);opacity:.6}100%{transform:scale(1.6);opacity:0}}
+
+        .shimmer-title{
+            background:linear-gradient(135deg,#fff 0%,#7dd3fc 50%,#fff 100%);
+            background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;
+            animation:shimmer 2.5s linear infinite;font-size:42px;font-weight:900;letter-spacing:-1px;
+        }
+        @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+
+        .dot-wave{display:flex;gap:8px;justify-content:center}
+        .dot-wave span{width:9px;height:9px;background:rgba(255,255,255,.8);border-radius:50%;animation:dwave 1.4s ease-in-out infinite}
+        .dot-wave span:nth-child(1){animation-delay:0s}
+        .dot-wave span:nth-child(2){animation-delay:.2s}
+        .dot-wave span:nth-child(3){animation-delay:.4s}
+        .dot-wave span:nth-child(4){animation-delay:.6s}
+        @keyframes dwave{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-14px);opacity:1}}
+
+        .progress-track{width:240px;height:4px;background:rgba(255,255,255,.15);border-radius:10px;overflow:hidden;margin-top:20px}
+        .progress-fill{
+            height:100%;border-radius:10px;width:0%;
+            background:linear-gradient(90deg,#0ea5e9,#38bdf8,#0ea5e9);
+            background-size:200% 100%;
+            animation:pgshimmer 1.5s ease-in-out infinite;
+            transition:width .1s linear;
+        }
+        @keyframes pgshimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+        .loader-version{position:absolute;bottom:16px;color:rgba(255,255,255,.2);font-size:11px}
+
+        /* ===== LOGIN SCREEN ===== */
+        #loginScreen{
+            position:fixed;inset:0;z-index:100;
+            background:linear-gradient(135deg,#082f49,#082f49);
+            display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;
+        }
+        .login-glass{
+            background:rgba(255,255,255,.07);backdrop-filter:blur(20px);
+            border:1px solid rgba(255,255,255,.13);border-radius:24px;
+            padding:36px 32px;width:100%;max-width:400px;color:#fff;
+            animation:fadeUp .5s ease-out;
+        }
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .role-btn{
+            width:100%;padding:14px 10px;border-radius:12px;border:none;
+            font-weight:700;font-size:14px;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:10px;
+            margin-bottom:10px;transition:transform .15s,opacity .2s,box-shadow .2s;
+        }
+        .role-btn:active{transform:scale(.97)}
+        .role-btn:hover{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+        .r-admin{background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff}
+        .r-student{background:linear-gradient(135deg,#0369a1,#0c4a6e);color:#fff}
+        .r-driver{background:linear-gradient(135deg,#15803d,#14532d);color:#fff}
+        .glass-input{
+            background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+            color:#fff;border-radius:10px;padding:12px 16px;width:100%;font-size:14px;outline:none;
+        }
+        .glass-input::placeholder{color:rgba(255,255,255,.4)}
+        .glass-input:focus{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.15)}
+        .enter-btn{
+            width:100%;padding:13px;border-radius:10px;border:none;
+            font-weight:700;font-size:14px;cursor:pointer;margin-top:8px;
+            background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;
+            transition:opacity .2s,transform .15s;
+        }
+        .enter-btn:hover{opacity:.9}
+        .enter-btn:active{transform:scale(.98)}
+        .back-btn{
+            width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);
+            background:transparent;color:rgba(255,255,255,.6);cursor:pointer;margin-top:8px;font-size:13px;
+            transition:background .2s,color .2s;
+        }
+        .back-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+
+        /* ===== LOGOUT CONFIRM MODAL ===== */
+        #logoutModal{
+            position:fixed;inset:0;background:rgba(0,0,0,.6);
+            display:flex;align-items:center;justify-content:center;z-index:300;padding:16px;
+            backdrop-filter:blur(4px);
+        }
+        .logout-card{
+            background:var(--card);border-radius:20px;padding:28px 24px;
+            width:100%;max-width:340px;text-align:center;
+            animation:fadeUp .25s ease-out;box-shadow:0 20px 60px rgba(0,0,0,.3);
+        }
+        .logout-icon-wrap{
+            width:64px;height:64px;border-radius:50%;
+            background:#fee2e2;display:flex;align-items:center;justify-content:center;
+            margin:0 auto 16px;
+        }
+        .logout-title{font-size:18px;font-weight:800;color:var(--text);margin-bottom:6px}
+        .logout-sub{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5}
+        .logout-btns{display:flex;gap:10px}
+        .btn-stay{flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;transition:background .2s}
+        .btn-stay:hover{background:var(--border)}
+        .btn-logout-confirm{flex:1;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-weight:700;font-size:13px;cursor:pointer;transition:opacity .2s}
+        .btn-logout-confirm:hover{opacity:.9}
+
+        /* ===== APP LAYOUT ===== */
+        #appLayout{display:flex;height:100vh;width:100%}
+        aside{width:220px;min-width:220px;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;height:100vh}
+        .sidebar-logo{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
+        .sidebar-logo i{color:#7dd3fc;font-size:22px}
+        .sidebar-logo span{font-size:18px;font-weight:800;letter-spacing:.5px}
+        nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+        .nav-btn{width:100%;padding:10px 12px;border:none;background:transparent;color:rgba(255,255,255,.65);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;text-align:left}
+        .nav-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+        .nav-btn.active{background:var(--brand);color:#fff}
+        .nav-btn i{width:18px;text-align:center}
+        .sidebar-bottom{padding:12px 8px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:6px}
+        .sidebar-bottom button{width:100%;padding:9px 12px;border:none;background:transparent;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.6)}
+        .sidebar-bottom button:hover{background:rgba(255,255,255,.1);color:#fff}
+        .main-col{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh}
+        header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+        header h2{font-size:18px;font-weight:700;color:var(--text)}
+        .user-badge{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.5px}
+        .badge-admin{background:#ede9fe;color:#4c1d95}
+        .badge-student{background:#dbeafe;color:#1e40af}
+        .badge-driver{background:#dcfce7;color:#166534}
+        main{flex:1;overflow-y:auto;padding:20px 24px;background:var(--bg)}
+        .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+        .panel h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+        .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+        .stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+        .stat .num{font-size:28px;font-weight:800;color:var(--brand)}
+        .stat .lbl{font-size:11px;color:var(--muted);margin-top:4px}
+        .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+        .tag-active{background:#dcfce7;color:#166534}
+        .tag-inactive{background:#f1f5f9;color:#64748b}
+        .tag-urgent{background:#fee2e2;color:#991b1b}
+        .tag-medium{background:#fef9c3;color:#854d0e}
+        .tag-low{background:#dbeafe;color:#1e40af}
+        .tag-resolved{background:#dcfce7;color:#166534}
+        .tag-pending{background:#fed7aa;color:#9a3412}
+        .dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+        .dot-green{background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,.5)}
+        .dot-red{background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.5)}
+        .dot-gray{background:#94a3b8}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{padding:10px 12px;text-align:left;background:var(--bg);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+        td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+        tr:last-child td{border-bottom:none}
+        .action-btn{padding:4px 10px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600}
+        .btn-edit{background:#dbeafe;color:#1e40af}
+        .btn-del{background:#fee2e2;color:#991b1b}
+        .btn-green{background:#dcfce7;color:#166534}
+        .btn-primary{padding:10px 18px;border-radius:10px;border:none;background:var(--brand);color:#fff;font-weight:700;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+        .btn-primary:hover{opacity:.9}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+        .form-group{display:flex;flex-direction:column;gap:5px}
+        .form-group label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+        .driver-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:12px}
+        .driver-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;position:relative;transition:box-shadow .2s}
+        .driver-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+        .driver-avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#0369a1);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;color:#fff;font-size:22px;position:relative}
+        .driver-line-label{font-size:10px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+        .modal{background:var(--card);border-radius:20px;padding:24px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto}
+        .modal h3{font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+        .modal-footer{display:flex;gap:10px;margin-top:16px}
+        .modal-footer button{flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-weight:600;font-size:13px}
+        .btn-cancel{background:var(--bg);color:var(--muted)}
+        .btn-save{background:var(--brand);color:#fff}
+        .info-box{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+        .info-box .label{font-size:10px;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:4px}
+        .info-box .value{font-size:15px;font-weight:700;color:var(--text)}
+        .alert-box{border-radius:12px;padding:14px 16px;margin-bottom:10px;border-left:4px solid}
+        .alert-change{background:#fef9c3;border-color:#eab308;color:#854d0e}
+        .ai-grad{background:linear-gradient(135deg,#0ea5e9,#7c3aed);color:#fff;border-radius:16px;padding:18px 20px;margin-bottom:16px}
+        .chat-box{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:160px;max-height:260px;overflow-y:auto;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
+        .msg-user{align-self:flex-end;background:#e0f2fe;color:#0369a1;padding:8px 14px;border-radius:14px 14px 4px 14px;font-size:12px;max-width:75%}
+        .msg-ai{align-self:flex-start;background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;padding:8px 14px;border-radius:14px 14px 14px 4px;font-size:12px;max-width:75%}
+        .msg-thinking{color:var(--muted);font-size:12px;font-style:italic;animation:blink 1.2s ease-in-out infinite}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+        .chat-input-row{display:flex;gap:8px}
+        .chat-input-row input{flex:1}
+        .chat-send{padding:10px 16px;border-radius:10px;border:none;background:var(--brand);color:#fff;cursor:pointer;font-weight:700;font-size:13px}
+        .submit-btn{width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;font-weight:700;font-size:14px;cursor:pointer;margin-top:8px}
+        ::-webkit-scrollbar{width:5px}
+        ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+        @media(max-width:640px){
+            body{overflow:auto}
+            #appLayout{flex-direction:column;height:auto;min-height:100vh}
+            aside{width:100%;min-width:0;height:auto;flex-direction:row;align-items:center;padding:0 8px;border-bottom:1px solid rgba(255,255,255,.1)}
+            .sidebar-logo{border-bottom:none;padding:10px 8px;flex-shrink:0}
+            .sidebar-logo span{display:none}
+            nav{flex-direction:row;padding:4px 2px;overflow-x:auto;overflow-y:visible;gap:0;flex:1}
+            .nav-btn{flex-direction:column;gap:2px;padding:8px 10px;font-size:9px;min-width:52px;border-radius:8px}
+            .nav-btn span{display:block;font-size:9px;white-space:nowrap}
+            .nav-btn i{width:auto;font-size:14px}
+            .sidebar-bottom{flex-direction:row;border-top:none;border-left:1px solid rgba(255,255,255,.1);padding:4px 6px;gap:4px;flex-shrink:0}
+            .sidebar-bottom button{padding:8px 8px;flex-direction:column;gap:1px;font-size:9px;border-radius:8px;min-width:40px}
+            .sidebar-bottom button span{margin-left:0!important;font-size:9px;display:block}
+            .main-col{flex:1;height:auto;min-height:0}
+            main{padding:12px 10px;overflow-y:visible}
+            header{padding:10px 14px}
+            header h2{font-size:15px}
+            .form-row{grid-template-columns:1fr}
+            .stat-grid{grid-template-columns:repeat(2,1fr)}
+            .driver-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
+            table{font-size:11px}
+            th,td{padding:7px 8px}
+            .panel{padding:14px}
+            .login-glass{padding:28px 20px}
+            .modal{max-width:95vw;padding:18px}
+        }
+        @media(max-width:380px){
+            .nav-btn{padding:6px 7px;min-width:44px}
+            .nav-btn span{display:none}
+            .sidebar-bottom button span{display:none}
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== LOADING SCREEN ===== -->
+<div id="loadingScreen">
+    <div class="loader-particles">
+        <div class="lp1"></div><div class="lp2"></div><div class="lp3"></div>
+    </div>
+    <div style="position:relative;z-index:10;text-align:center">
+        <!-- Bus SVG -->
+        <div style="position:relative;margin-bottom:28px">
+            <div class="bus-float" style="display:inline-block">
+                <svg width="110" height="110" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="45" width="80" height="40" rx="8" fill="white" fill-opacity=".95"/>
+                    <rect x="20" y="45" width="80" height="40" rx="8" stroke="#22c55e" stroke-width="2" fill="none"/>
+                    <rect x="30" y="52" width="12" height="16" rx="2" fill="#0ea5e9"/>
+                    <rect x="48" y="52" width="12" height="16" rx="2" fill="#0ea5e9"/>
+                    <rect x="66" y="52" width="12" height="16" rx="2" fill="#0ea5e9"/>
+                    <rect x="84" y="52" width="12" height="16" rx="2" fill="#0ea5e9"/>
+                    <circle cx="38" cy="85" r="8" fill="#1e293b"/>
+                    <circle cx="38" cy="85" r="4" fill="#cbd5e1"/>
+                    <circle cx="82" cy="85" r="8" fill="#1e293b"/>
+                    <circle cx="82" cy="85" r="4" fill="#cbd5e1"/>
+                    <path d="M100 55 L115 50 L115 70 L100 65" fill="#fbbf24" fill-opacity=".7"/>
+                </svg>
+            </div>
+            <div class="pulse-ring-outer"><div class="pulse-ring-el"></div></div>
+        </div>
+        <h1 class="shimmer-title">Naveo</h1>
+        <p style="color:rgba(255,255,255,.5);font-size:13px;margin-top:6px;letter-spacing:1px">University Transport System</p>
+        <div style="margin-top:28px;margin-bottom:16px">
+            <div id="loadMsg" style="color:rgba(255,255,255,.7);font-size:13px;margin-bottom:14px">Initializing system...</div>
+            <div class="dot-wave"><span></span><span></span><span></span><span></span></div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="pgFill"></div></div>
+        <div id="tipText" style="margin-top:20px;color:rgba(255,255,255,.35);font-size:11px;font-style:italic">✨ Smart routing • Real-time updates • AI-powered</div>
+    </div>
+    <div class="loader-version">v1.0 • Naveo</div>
+</div>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="loginScreen" class="hidden">
+    <div class="login-glass">
+        <div style="text-align:center;margin-bottom:24px">
+            <div style="width:60px;height:60px;background:rgba(255,255,255,.1);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+                <i class="fas fa-bus-alt" style="font-size:28px;color:#7dd3fc"></i>
+            </div>
+            <h2 style="font-size:22px;font-weight:800">Naveo</h2>
+            <p style="color:rgba(255,255,255,.45);font-size:12px;margin-top:4px">University Transport System</p>
+        </div>
+
+        <!-- Step 1: Role selection -->
+        <div id="step1">
+            <p style="color:rgba(255,255,255,.55);font-size:12px;text-align:center;margin-bottom:14px">Choose your role to continue</p>
+            <button class="role-btn r-admin" onclick="showLogin('admin')"><i class="fas fa-user-shield"></i> Admin</button>
+            <button class="role-btn r-student" onclick="showLogin('student')"><i class="fas fa-user-graduate"></i> Student</button>
+            <button class="role-btn r-driver" onclick="showLogin('driver')"><i class="fas fa-id-card"></i> Driver</button>
+        </div>
+
+        <!-- Step 2a: Admin -->
+        <div id="stepAdmin" class="hidden">
+            <p style="color:rgba(255,255,255,.55);font-size:12px;text-align:center;margin-bottom:14px">Enter admin password</p>
+            <input class="glass-input" type="password" id="adminPass" placeholder="Password" onkeydown="if(event.key==='Enter')loginAdmin()" style="margin-bottom:6px">
+            <button class="enter-btn" onclick="loginAdmin()"><i class="fas fa-arrow-right-to-bracket"></i> Enter</button>
+            <button class="back-btn" onclick="backToRoles()"><i class="fas fa-arrow-left"></i> Back</button>
+            <p id="adminErr" class="hidden" style="color:#fca5a5;font-size:12px;text-align:center;margin-top:8px"></p>
+        </div>
+
+        <!-- Step 2b: Student -->
+        <div id="stepStudent" class="hidden">
+            <p style="color:rgba(255,255,255,.55);font-size:12px;text-align:center;margin-bottom:14px">Matricule étudiant (12 chiffres)</p>
+            <input class="glass-input" type="text" id="studentId" placeholder="ex. 012345678901" maxlength="12" oninput="this.value=this.value.replace(/\D/g,'');document.getElementById('sdCount').textContent=this.value.length+' / 12'" onkeydown="if(event.key==='Enter')loginStudent()" style="margin-bottom:4px;text-align:center;letter-spacing:3px;font-size:18px">
+            <p id="sdCount" style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;margin-bottom:10px">0 / 12</p>
+            <div style="position:relative;margin-bottom:10px">
+                <input class="glass-input" type="password" id="studentPass" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')loginStudent()" style="padding-right:42px">
+                <button onclick="toggleStudentPass()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:14px;padding:0" id="togglePassBtn"><i class="fas fa-eye" id="passEyeIcon"></i></button>
+            </div>
+            <button class="enter-btn" onclick="loginStudent()"><i class="fas fa-arrow-right-to-bracket"></i> Enter</button>
+            <button class="back-btn" onclick="backToRoles()"><i class="fas fa-arrow-left"></i> Back</button>
+            <p id="studentErr" class="hidden" style="color:#fca5a5;font-size:12px;text-align:center;margin-top:8px"></p>
+        </div>
+
+        <!-- Step 2c: Driver -->
+        <div id="stepDriver" class="hidden">
+            <p style="color:rgba(255,255,255,.55);font-size:12px;text-align:center;margin-bottom:14px">Enter your Driver ID</p>
+            <input class="glass-input" type="text" id="driverId" placeholder="ex. DRV-001" onkeydown="if(event.key==='Enter')loginDriver()" style="margin-bottom:8px;text-align:center;font-size:16px">
+            <input class="glass-input" type="password" id="driverPass" placeholder="Mot de passe conducteur" onkeydown="if(event.key==='Enter')loginDriver()" style="margin-bottom:8px;text-align:center;font-size:15px">
+            <button class="enter-btn" style="background:linear-gradient(135deg,#15803d,#0369a1)" onclick="loginDriver()"><i class="fas fa-arrow-right-to-bracket"></i> Enter</button>
+            <button class="back-btn" onclick="backToRoles()"><i class="fas fa-arrow-left"></i> Back</button>
+            <p id="driverErr" class="hidden" style="color:#fca5a5;font-size:12px;text-align:center;margin-top:8px"></p>
+        </div>
+    </div>
+</div>
+
+<!-- ===== LOGOUT CONFIRM MODAL ===== -->
+<div id="logoutModal" class="hidden">
+    <div class="logout-card">
+        <div class="logout-icon-wrap">
+            <i class="fas fa-sign-out-alt" style="font-size:26px;color:#ef4444"></i>
+        </div>
+        <div class="logout-title">Logout?</div>
+        <div class="logout-sub">Are you sure you want to logout?<br>Your data will be saved.</div>
+        <div class="logout-btns">
+            <button class="btn-stay" onclick="closeLogout()"><i class="fas fa-times" style="margin-right:4px"></i> Stay</button>
+            <button class="btn-logout-confirm" onclick="executeLogout()"><i class="fas fa-sign-out-alt" style="margin-right:4px"></i> Logout</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== APP LAYOUT ===== -->
+<div id="appLayout" class="hidden">
+    <aside>
+        <div class="sidebar-logo">
+            <i class="fas fa-bus-alt"></i><span>Naveo</span>
+        </div>
+        <nav id="sidebarNav"></nav>
+        <div class="sidebar-bottom">
+            <button onclick="toggleDark()"><i class="fas fa-moon" id="darkIcon"></i><span id="darkLabel" style="margin-left:4px">Dark Mode</span></button>
+            <button onclick="confirmLogout()" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i><span style="margin-left:4px">Logout</span></button>
+        </div>
+    </aside>
+    <div class="main-col">
+        <header>
+            <h2 id="pageTitle">Dashboard</h2>
+            <div class="user-badge" id="userBadge"></div>
+        </header>
+        <main><div id="viewContainer"></div></main>
+    </div>
+</div>
+
+<!-- GENERIC MODAL -->
+<div class="modal-bg hidden" id="modalBg">
+    <div class="modal" id="modalBox"></div>
+</div>
+
+<script>
+    const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+        ? (window.location.origin + '/api/v1')
+        : 'http://127.0.0.1:8000/api/v1';
+
+    async function apiFetch(path, options = {}){
+        const res = await fetch(`${API_BASE}${path}`, {
+            headers:{'Content-Type':'application/json', ...(options.headers||{})},
+            ...options
+        });
+        if(!res.ok){
+            let msg='API error';
+            try{ const e=await res.json(); msg=e.message||e.error||msg; }catch(_){}
+            throw new Error(msg);
+        }
+        if(res.status===204) return null;
+        return res.json();
+    }
+
+    // ===== STATE =====
+    let S = {
+        role:'', uid:'', view:'',
+        dark:false,
+        data:{ lines:[], stations:[], buses:[], drivers:[], incidents:[], reservations:[], notifications:[] }
+    };
+
+    async function loadBootstrap(){
+        const db = await apiFetch('/bootstrap');
+        S.data = {
+            lines: db.lines || [],
+            stations: (db.stations || []).map(s => typeof s === 'string' ? s : s.name),
+            buses: db.buses || [],
+            drivers: db.drivers || [],
+            incidents: db.incidents || [],
+            reservations: db.reservations || [],
+            notifications: db.notifications || []
+        };
+    }
+
+    async function syncAll(){
+        await apiFetch('/bootstrap', {
+            method:'PUT',
+            body: JSON.stringify({
+                lines: S.data.lines,
+                stations: S.data.stations,
+                buses: S.data.buses,
+                drivers: S.data.drivers,
+                incidents: S.data.incidents,
+                reservations: S.data.reservations,
+                notifications: S.data.notifications
+            })
+        });
+    }
+    function save(){ syncAll().catch(err=>console.error(err)); }
+
+    // ===== LOADING SCREEN =====
+    const loadMsgs = ['Initializing system...','Loading modules...','Connecting to server...','Syncing transport data...','Preparing interface...','Almost there...','Welcome to Naveo!'];
+    const tips = ['✨ Smart routing for your campus','🚌 Track buses in real-time','🔔 Drivers get instant alerts','💺 Reserve your seat in advance','📊 AI-powered incident analysis','🎓 Designed for university life','🌍 Eco-friendly transport system'];
+    let prog=0, msgI=0, tipI=0;
+
+    const pgInterval = setInterval(()=>{
+        prog += Math.random()*7+2;
+        if(prog>100) prog=100;
+        document.getElementById('pgFill').style.width = prog+'%';
+        if(prog > msgI*14 && msgI < loadMsgs.length-1){ msgI++; document.getElementById('loadMsg').textContent = loadMsgs[msgI]; }
+        if(Math.floor(prog/12)>tipI && tipI<tips.length-1){ tipI++; document.getElementById('tipText').textContent = tips[tipI]; }
+        if(prog>=100){
+            clearInterval(pgInterval);
+            const ls = document.getElementById('loadingScreen');
+            ls.style.transition='opacity .8s ease-out';
+            ls.style.opacity='0';
+            setTimeout(()=>{
+                ls.classList.add('hidden');
+                const login = document.getElementById('loginScreen');
+                login.classList.remove('hidden');
+                login.style.opacity='0';
+                login.style.transition='opacity .6s ease-in';
+                setTimeout(()=>login.style.opacity='1',50);
+            },800);
+        }
+    },80);
+
+    // ===== DARK MODE =====
+    function applyDark(){
+        document.body.setAttribute('data-dark',S.dark?'1':'0');
+        const ic=document.getElementById('darkIcon');
+        const lb=document.getElementById('darkLabel');
+        if(ic) ic.className=S.dark?'fas fa-sun':'fas fa-moon';
+        if(lb) lb.textContent=S.dark?'Light Mode':'Dark Mode';
+    }
+    function toggleDark(){ S.dark=!S.dark; applyDark(); }
+
+    // ===== LOGIN =====
+    function showLogin(role){
+        ['step1','stepAdmin','stepStudent','stepDriver'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+        const map={admin:'stepAdmin',student:'stepStudent',driver:'stepDriver'};
+        document.getElementById(map[role]).classList.remove('hidden');
+    }
+    function backToRoles(){
+        ['stepAdmin','stepStudent','stepDriver'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+        document.getElementById('step1').classList.remove('hidden');
+        document.getElementById('adminPass').value='';
+        document.getElementById('studentId').value='';
+        document.getElementById('studentPass').value='';
+        document.getElementById('driverId').value='';
+        document.getElementById('driverPass').value='';
+        document.getElementById('sdCount').textContent='0 / 12';
+    }
+    async function loginAdmin(){
+        try{
+            await apiFetch('/auth/admin',{method:'POST',body:JSON.stringify({password:document.getElementById('adminPass').value})});
+            await loadBootstrap();
+            enterApp('admin','Admin');
+        }catch(e){ showErr('adminErr',e.message||'Wrong password'); }
+    }
+    function toggleStudentPass(){
+        const inp=document.getElementById('studentPass');
+        const icon=document.getElementById('passEyeIcon');
+        if(inp.type==='password'){inp.type='text';icon.className='fas fa-eye-slash';}
+        else{inp.type='password';icon.className='fas fa-eye';}
+    }
+    async function loginStudent(){
+        const id=document.getElementById('studentId').value.trim();
+        if(id.length!==12) return showErr('studentErr','Le matricule doit comporter 12 chiffres');
+        const pass=document.getElementById('studentPass').value;
+        if(!pass) return showErr('studentErr','Saisissez le mot de passe');
+        try{
+            const r=await apiFetch('/auth/student',{method:'POST',body:JSON.stringify({studentId:id,password:pass})});
+            await loadBootstrap();
+            enterApp('student',r.uid||id);
+        }catch(e){ showErr('studentErr',e.message||'Login failed'); }
+    }
+    async function loginDriver(){
+        const id=document.getElementById('driverId').value.trim().toUpperCase();
+        const dpass=document.getElementById('driverPass').value;
+        try{
+            const r=await apiFetch('/auth/driver',{method:'POST',body:JSON.stringify({driverId:id,password:dpass})});
+            await loadBootstrap();
+            enterApp('driver',r.uid||id);
+        }catch(e){ showErr('driverErr',e.message||'Driver ID not found'); }
+    }
+    function showErr(elId,msg){
+        const el=document.getElementById(elId);
+        el.textContent=msg; el.classList.remove('hidden');
+        setTimeout(()=>el.classList.add('hidden'),3000);
+    }
+    function enterApp(role,uid){
+        S.role=role; S.uid=uid;
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('appLayout').classList.remove('hidden');
+        applyDark();
+        buildSidebar();
+        nav({admin:'dashboard',student:'home',driver:'driverHome'}[role]);
+        const badge=document.getElementById('userBadge');
+        badge.className='user-badge badge-'+role;
+        badge.innerHTML=`<i class="fas ${role==='admin'?'fa-user-shield':role==='student'?'fa-user-graduate':'fa-id-card'}"></i> ${uid}`;
+    }
+
+    // ===== LOGOUT =====
+    function confirmLogout(){ document.getElementById('logoutModal').classList.remove('hidden'); }
+    function closeLogout(){ document.getElementById('logoutModal').classList.add('hidden'); }
+    function executeLogout(){
+        closeLogout();
+        // Reset state
+        S.role=''; S.uid=''; S.view='';
+        document.getElementById('appLayout').classList.add('hidden');
+        // Show login with fade
+        const login=document.getElementById('loginScreen');
+        login.style.opacity='0';
+        login.classList.remove('hidden');
+        login.style.transition='opacity .5s ease-in';
+        setTimeout(()=>login.style.opacity='1',30);
+        // Reset form
+        backToRoles();
+        document.getElementById('adminPass').value='';
+        document.getElementById('studentId').value='';
+        document.getElementById('studentPass').value='';
+        document.getElementById('driverId').value='';
+        document.getElementById('driverPass').value='';
+        document.getElementById('sdCount').textContent='0 / 12';
+    }
+
+    // ===== SIDEBAR =====
+    const MENUS={
+        admin:[
+            {id:'dashboard',icon:'fa-chart-pie',label:'Dashboard'},
+            {id:'lines',icon:'fa-route',label:'Lines'},
+            {id:'stations',icon:'fa-map-marker-alt',label:'Stations'},
+            {id:'buses',icon:'fa-bus',label:'Buses'},
+            {id:'drivers',icon:'fa-id-card',label:'Drivers'},
+            {id:'reservations',icon:'fa-ticket-alt',label:'Reservations'},
+            {id:'incidents',icon:'fa-exclamation-triangle',label:'Incidents'},
+            {id:'ai',icon:'fa-robot',label:'AI Assistant'}
+        ],
+        student:[
+            {id:'home',icon:'fa-home',label:'Home'},
+            {id:'myreservations',icon:'fa-ticket-alt',label:'My Reservations'},
+            {id:'stations',icon:'fa-map-marker-alt',label:'Stations'},
+            {id:'incidents',icon:'fa-exclamation-triangle',label:'Report'},
+            {id:'ai',icon:'fa-robot',label:'AI'}
+        ],
+        driver:[
+            {id:'driverHome',icon:'fa-home',label:'My Dashboard'},
+            {id:'driverSchedule',icon:'fa-clock',label:'My Schedule'},
+            {id:'driverIncidents',icon:'fa-exclamation-triangle',label:'Report Incident'},
+            {id:'driverMyIncidents',icon:'fa-list',label:'My Reports'}
+        ]
+    };
+    function buildSidebar(){
+        document.getElementById('sidebarNav').innerHTML=MENUS[S.role].map(m=>`
+    <button class="nav-btn${S.view===m.id?' active':''}" onclick="nav('${m.id}')">
+      <i class="fas ${m.icon}"></i><span>${m.label}</span>
+    </button>`).join('');
+    }
+    function nav(viewId){
+        S.view=viewId; buildSidebar();
+        const titles={dashboard:'Dashboard',lines:'Lines',stations:'Stations',buses:'Buses',drivers:'Drivers',reservations:'Reservations',incidents:S.role==='student'?'Report Incident':'Incidents',ai:'AI Assistant',home:'Home',myreservations:'My Reservations',driverHome:'My Dashboard',driverSchedule:'My Schedule',driverIncidents:'Report Incident',driverMyIncidents:'My Reports'};
+        document.getElementById('pageTitle').textContent=titles[viewId]||viewId;
+        const vc=document.getElementById('viewContainer');
+        vc.innerHTML='';
+        const views={dashboard:viewAdminDash,lines:viewLines,stations:viewStations,buses:viewBuses,drivers:viewDrivers,reservations:viewReservations,incidents:S.role==='student'?viewStudentIncidents:viewAdminIncidents,ai:viewAI,home:viewStudentHome,myreservations:viewMyReservations,driverHome:viewDriverHome,driverSchedule:viewDriverSchedule,driverIncidents:viewDriverReport,driverMyIncidents:viewDriverMyIncidents};
+        if(views[viewId]) vc.innerHTML=views[viewId]();
+        if(viewId==='home') setTimeout(updateBusOpts,50);
+    }
+
+    // ===== ADMIN VIEWS =====
+    function viewAdminDash(){
+        const cap=S.data.buses.reduce((a,b)=>a+b.capacity,0);
+        const res=S.data.buses.reduce((a,b)=>a+b.reserved,0);
+        const occ=cap>0?((res/cap)*100).toFixed(0):0;
+        return `
+  <div class="stat-grid">
+    <div class="stat"><div class="num">${S.data.lines.filter(l=>l.status==='active').length}</div><div class="lbl">Active Lines</div></div>
+    <div class="stat"><div class="num">${S.data.buses.length}</div><div class="lbl">Buses</div></div>
+    <div class="stat"><div class="num">${S.data.reservations.length}</div><div class="lbl">Reservations</div></div>
+    <div class="stat"><div class="num" style="color:#f59e0b">${S.data.incidents.filter(i=>i.status==='pending').length}</div><div class="lbl">Pending Incidents</div></div>
+    <div class="stat"><div class="num">${occ}%</div><div class="lbl">Occupancy</div></div>
+    <div class="stat"><div class="num">${S.data.drivers.length}</div><div class="lbl">Drivers</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="panel">
+      <h3><i class="fas fa-bus" style="color:var(--brand)"></i> Bus Status</h3>
+      ${S.data.buses.map(b=>{const pct=((b.reserved/b.capacity)*100).toFixed(0);const full=b.reserved>=b.capacity;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text)"><span class="dot ${full?'dot-red':'dot-green'}"></span>${b.name}${full?' <span class="tag tag-urgent" style="margin-left:4px">FULL</span>':''}</div><div style="font-size:11px;color:var(--muted)">${b.reserved}/${b.capacity} • ${b.time}</div></div><span class="tag tag-${pct>80?'urgent':pct>50?'medium':'low'}">${pct}%</span></div>`;}).join('')}
+    </div>
+    <div class="panel">
+      <h3><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> Recent Incidents</h3>
+      ${S.data.incidents.slice(-5).reverse().map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;font-weight:600;color:var(--text)">${i.aiCategory||'Unclassified'} — <span class="tag tag-${i.status==='resolved'?'resolved':'pending'}">${i.status}</span></div><div style="font-size:11px;color:var(--muted);margin-top:2px">${i.description.substring(0,60)}...</div></div>`).join('')||'<p style="font-size:13px;color:var(--muted)">No incidents</p>'}
+    </div>
+  </div>`;
+    }
+    function viewLines(){
+        return`<div class="panel"><h3><i class="fas fa-plus-circle" style="color:var(--brand)"></i> Add Line</h3><div class="form-row"><div class="form-group"><label>Line Name</label><input id="nl_name" placeholder="e.g. Ligne 3 - ..."></div><div class="form-group"><label>Station</label><select id="nl_station">${S.data.stations.map(s=>`<option>${s}</option>`).join('')}</select></div></div><div class="form-row"><div class="form-group"><label>Departure Time</label><input type="time" id="nl_time" value="08:00"></div><div class="form-group" style="align-self:flex-end"><button class="btn-primary" onclick="addLine()"><i class="fas fa-plus"></i> Add Line</button></div></div></div>
+  <div class="panel" style="padding:0;overflow:hidden"><table><thead><tr><th>Line</th><th>Station</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead><tbody>${S.data.lines.map((l,i)=>`<tr><td style="font-weight:600">${l.name}</td><td>${l.station||'—'}</td><td><input type="time" value="${l.nextTime}" onchange="updateLineTime(${i},this.value)" style="width:100px;padding:4px 8px;font-size:12px"></td><td><span class="tag tag-${l.status==='active'?'active':'inactive'}">${l.status}</span></td><td style="display:flex;gap:6px"><button class="action-btn btn-edit" onclick="toggleLine(${i})">${l.status==='active'?'Disable':'Enable'}</button><button class="action-btn btn-del" onclick="deleteLine(${i})">Delete</button></td></tr>`).join('')}</tbody></table></div>`;
+    }
+    function viewStations(){
+        return`<div class="panel"><h3><i class="fas fa-plus-circle" style="color:var(--brand)"></i> Add Station</h3><div style="display:flex;gap:10px"><input id="ns_name" placeholder="Station name" style="flex:1"><button class="btn-primary" onclick="addStation()"><i class="fas fa-plus"></i> Add</button></div></div>
+  <div class="panel" style="padding:0;overflow:hidden"><table><thead><tr><th>#</th><th>Station</th><th>Lines</th><th>Action</th></tr></thead><tbody>${S.data.stations.map((s,i)=>{const lines=S.data.lines.filter(l=>l.station===s);return`<tr><td style="color:var(--muted)">${i+1}</td><td style="font-weight:600">${s}</td><td>${lines.map(l=>`<span class="tag tag-${l.status==='active'?'active':'inactive'}" style="margin-right:4px">${l.name.split(' ').slice(0,2).join(' ')}</span>`).join('')||'<span style="color:var(--muted);font-size:12px">None</span>'}</td><td><button class="action-btn btn-del" onclick="deleteStation(${i})">Delete</button></td></tr>`;}).join('')}</tbody></table></div>`;
+    }
+    function viewBuses(){
+        return`<div class="panel"><h3><i class="fas fa-plus-circle" style="color:var(--brand)"></i> Add Bus</h3><div class="form-row"><div class="form-group"><label>Name</label><input id="nb_name" placeholder="Bus 03"></div><div class="form-group"><label>Capacity</label><input type="number" id="nb_cap" value="50" min="1"></div></div><div class="form-row"><div class="form-group"><label>Line</label><select id="nb_line"><option value="">-- Select --</option>${S.data.lines.map(l=>`<option value="${l.name}">${l.name}</option>`).join('')}</select></div><div class="form-group"><label>Time</label><input type="time" id="nb_time" value="08:00"></div></div><button class="btn-primary" onclick="addBus()"><i class="fas fa-plus"></i> Add Bus</button></div>
+  <div class="panel" style="padding:0;overflow:hidden"><table><thead><tr><th>Bus</th><th>Line</th><th>Capacity</th><th>Reserved</th><th>Time</th><th>Actions</th></tr></thead><tbody>${S.data.buses.map((b,i)=>{const full=b.reserved>=b.capacity;return`<tr><td style="font-weight:600"><div style="display:flex;align-items:center;gap:6px"><span class="dot ${full?'dot-red':'dot-green'}"></span>${b.name}</div></td><td style="font-size:12px">${b.line}</td><td>${b.capacity}</td><td>${b.reserved}</td><td>${b.time}</td><td style="display:flex;gap:6px"><button class="action-btn btn-edit" onclick="editBus(${i})">Edit</button><button class="action-btn btn-del" onclick="deleteBus(${i})">Delete</button></td></tr>`;}).join('')}</tbody></table></div>`;
+    }
+    function viewDrivers(){
+        return`<div class="panel"><h3><i class="fas fa-plus-circle" style="color:var(--brand)"></i> Add Driver</h3><div class="form-row"><div class="form-group"><label>Driver ID</label><input id="nd_id" placeholder="DRV-003"></div><div class="form-group"><label>Full Name</label><input id="nd_name" placeholder="Name"></div></div><div class="form-row"><div class="form-group"><label>Assigned Line</label><select id="nd_line"><option value="">-- Select --</option>${S.data.lines.map(l=>`<option value="${l.name}">${l.name}</option>`).join('')}</select></div><div class="form-group"><label>Shift Time</label><input type="time" id="nd_time" value="08:00"></div></div><div class="form-group" style="margin-bottom:10px"><label>Station</label><select id="nd_station"><option value="">-- Select --</option>${S.data.stations.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div><button class="btn-primary" onclick="addDriver()"><i class="fas fa-plus"></i> Add Driver</button></div>
+  <div class="driver-grid">${S.data.drivers.map((d,i)=>{const line=S.data.lines.find(l=>l.name===d.line);const active=line&&line.status==='active';const inc=S.data.incidents.filter(x=>x.driverId===d.id&&x.status==='pending').length;const ls=d.line?(d.line.match(/Ligne\s*\d+/i)?.[0]||d.line.split('—')[0].trim()):'—';return`<div class="driver-card" onclick="editDriver(${i})">${inc>0?`<span style="position:absolute;top:6px;left:6px;width:16px;height:16px;background:#f59e0b;border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center">${inc}</span>`:''}<button onclick="event.stopPropagation();deleteDriver(${i})" style="position:absolute;top:6px;right:6px;width:18px;height:18px;background:#fee2e2;border:none;border-radius:50%;cursor:pointer;font-size:9px;color:#991b1b">✕</button><div class="driver-avatar"><i class="fas fa-user-tie"></i><span style="position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;border:2px solid var(--card);background:${active?'#22c55e':'#94a3b8'}"></span></div><div class="driver-line-label">${ls}</div></div>`;}).join('')}</div>`;
+    }
+    function viewReservations(){
+        const res=S.data.reservations;
+        return`<div class="stat-grid" style="margin-bottom:16px"><div class="stat"><div class="num">${res.length}</div><div class="lbl">Total</div></div><div class="stat"><div class="num">${new Set(res.map(r=>r.studentId)).size}</div><div class="lbl">Students</div></div><div class="stat"><div class="num">${new Set(res.map(r=>r.bus)).size}</div><div class="lbl">Buses Used</div></div></div>
+  <div class="panel" style="padding:0;overflow:hidden"><table><thead><tr><th>Student</th><th>Bus</th><th>Line</th><th>Station</th><th>Time</th><th>Actions</th></tr></thead><tbody>${res.length===0?`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No reservations</td></tr>`:res.map((r,i)=>`<tr><td><span class="tag" style="background:#dbeafe;color:#1e40af;font-family:monospace">${r.studentId}</span></td><td>${r.bus}</td><td style="font-size:11px">${r.line}</td><td style="font-size:11px">${r.station}</td><td>${r.time}</td><td style="display:flex;gap:6px"><button class="action-btn btn-edit" onclick="editReservation(${i})">Edit</button><button class="action-btn btn-del" onclick="deleteReservation(${i})">Delete</button></td></tr>`).join('')}</tbody></table></div>`;
+    }
+    function viewAdminIncidents(){
+        const inc=S.data.incidents;
+        return`<div class="stat-grid" style="margin-bottom:16px"><div class="stat"><div class="num" style="color:#f59e0b">${inc.filter(i=>i.status==='pending').length}</div><div class="lbl">Pending</div></div><div class="stat"><div class="num" style="color:#22c55e">${inc.filter(i=>i.status==='resolved').length}</div><div class="lbl">Resolved</div></div><div class="stat"><div class="num" style="color:#ef4444">${inc.filter(i=>i.aiSeverity==='Urgent').length}</div><div class="lbl">Urgent</div></div></div>
+  ${inc.length===0?`<div class="panel"><p style="color:var(--muted);text-align:center;font-size:13px">No incidents</p></div>`:inc.slice().reverse().map((ic,ri)=>{const i=S.data.incidents.length-1-ri;const isDriver=ic.role==='driver';return`<div class="panel" style="border-left:4px solid ${ic.status==='resolved'?'#22c55e':'#f59e0b'}"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px"><div><div style="font-size:13px;font-weight:700;color:var(--text)">${ic.description}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${isDriver?`<span class="tag" style="background:#dcfce7;color:#166534;margin-right:6px"><i class="fas fa-id-card"></i> Driver: ${ic.uid}</span>`:`<span class="tag" style="background:#dbeafe;color:#1e40af;margin-right:6px"><i class="fas fa-user-graduate"></i> Student: ${ic.uid}</span>`}${ic.timestamp}</div></div><span class="tag tag-${ic.status==='resolved'?'resolved':'pending'}">${ic.status}</span></div>${ic.aiCategory?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span class="tag tag-${ic.aiSeverity==='Urgent'?'urgent':ic.aiSeverity==='Medium'?'medium':'low'}">${ic.aiSeverity}</span><span class="tag tag-inactive">${ic.aiCategory}</span></div>`:''} ${ic.aiSuggestion?`<div style="font-size:12px;background:var(--bg);padding:8px 12px;border-radius:8px;color:var(--text);margin-bottom:8px"><strong>AI Suggestion:</strong> ${ic.aiSuggestion}</div>`:''} ${ic.aiLineWarning?`<div style="font-size:12px;background:#fee2e2;padding:8px 12px;border-radius:8px;color:#991b1b;margin-bottom:8px"><strong>⚠ Warning:</strong> ${ic.aiLineWarning}</div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap">${ic.status!=='resolved'?`<button class="action-btn btn-green" onclick="resolveIncident(${i})">Mark Resolved</button>`:''} ${ic.aiAffectedLine?`<button class="action-btn btn-del" onclick="disableLine('${ic.aiAffectedLine}')">Disable Line</button>`:''}<button class="action-btn btn-del" onclick="deleteIncident(${i})">Delete</button></div></div>`;}).join('')}`;
+    }
+
+    // ===== STUDENT VIEWS =====
+    function viewStudentHome(){
+        const myRes=S.data.reservations.filter(r=>r.studentId===S.uid);
+        const activeLines=S.data.lines.filter(l=>l.status==='active');
+        return`<div style="background:linear-gradient(135deg,var(--brand),#0369a1);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:16px"><div style="font-size:20px;font-weight:800">Welcome, ${S.uid}!</div><div style="font-size:13px;opacity:.8;margin-top:4px">${myRes.length} active reservation(s)</div></div>
+  <div class="stat-grid" style="margin-bottom:16px"><div class="stat"><div class="num">${myRes.length}</div><div class="lbl">My Reservations</div></div><div class="stat"><div class="num">${activeLines.length}</div><div class="lbl">Active Lines</div></div><div class="stat"><div class="num">${S.data.stations.length}</div><div class="lbl">Stations</div></div></div>
+  <div class="panel"><h3><i class="fas fa-ticket-alt" style="color:var(--brand)"></i> Book a Bus</h3><div class="form-group" style="margin-bottom:10px"><label>Line</label><select id="bk_line" onchange="updateBusOpts()">${activeLines.length===0?'<option>No active lines</option>':activeLines.map(l=>`<option value="${l.name}">${l.name} (${l.nextTime})</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:10px"><label>Station</label><select id="bk_station">${S.data.stations.map(s=>`<option>${s}</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:14px"><label>Bus</label><select id="bk_bus"></select></div><button class="btn-primary" style="width:100%;justify-content:center" onclick="reserve()"><i class="fas fa-check"></i> Reserve</button><div id="bk_msg" style="text-align:center;font-size:13px;margin-top:8px"></div></div>`;
+    }
+    function viewMyReservations(){
+        const myRes=S.data.reservations.map((r,i)=>({...r,gi:i})).filter(r=>r.studentId===S.uid);
+        return`<div class="panel"><h3><i class="fas fa-ticket-alt" style="color:var(--brand)"></i> My Reservations (${myRes.length})</h3>${myRes.length===0?'<p style="color:var(--muted);text-align:center;font-size:13px;padding:20px">No reservations yet</p>':myRes.map(r=>{const bus=S.data.buses.find(b=>b.name===r.bus);const full=bus&&bus.reserved>=bus.capacity;return`<div style="padding:12px;border-radius:10px;border:1px solid ${full?'#fbbf24':'var(--border)'};background:${full?'#fef9c3':'var(--bg)'};margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:700;color:${full?'#854d0e':'var(--text)'}"><span class="dot ${full?'':'dot-green'}" style="${full?'background:#f59e0b':''};margin-right:6px"></span>${r.bus} — ${r.line}${full?' ⚠ Problem':''}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Station: ${r.station} • Departs: ${r.time}</div><div style="font-size:10px;color:var(--muted)">Booked: ${r.bookedAt}</div></div><button class="action-btn btn-del" onclick="cancelReservation(${r.gi})">Cancel</button></div>`;}).join('')}</div>`;
+    }
+
+    function viewStudentIncidents(){
+        const myInc=S.data.incidents.filter(i=>i.uid===S.uid&&i.role==='student').slice().reverse();
+        return`<div class="panel"><h3><i class="fas fa-exclamation-triangle" style="color:var(--brand)"></i> Report an Incident</h3><div class="form-group" style="margin-bottom:12px"><label>Description</label><textarea id="stu_inc_desc" placeholder="Describe the issue clearly... (e.g. bus late, overcrowded, driver behavior)" style="min-height:100px;resize:vertical"></textarea></div><div class="form-group" style="margin-bottom:12px"><label>Related Line (optional)</label><select id="stu_inc_line"><option value="">-- Select line --</option>${S.data.lines.map(l=>`<option value="${l.name}">${l.name}</option>`).join('')}</select></div><button class="submit-btn" onclick="studentSubmitIncident()"><i class="fas fa-paper-plane"></i> Submit Report</button><div id="stu_inc_msg" style="text-align:center;font-size:13px;margin-top:8px"></div><div id="stu_ai_box" class="hidden" style="margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px"><div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px"><i class="fas fa-robot"></i> AI Analysis</div><div id="stu_ai_content" style="font-size:12px;color:var(--muted)" class="msg-thinking">Analyzing...</div></div></div>
+<div class="panel"><h3><i class="fas fa-list" style="color:var(--brand)"></i> My Reports (${myInc.length})</h3>${myInc.length===0?'<p style="color:var(--muted);text-align:center;font-size:13px;padding:20px">No reports submitted yet</p>':myInc.map(inc=>`<div style="padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);margin-bottom:8px;border-left:4px solid ${inc.status==='resolved'?'#22c55e':'#f59e0b'}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-size:13px;font-weight:600;color:var(--text);flex:1">${inc.description}</div><span class="tag tag-${inc.status==='resolved'?'resolved':'pending'}" style="margin-left:8px;white-space:nowrap">${inc.status}</span></div>${inc.aiCategory?`<div style="display:flex;gap:6px;margin-top:6px"><span class="tag tag-${inc.aiSeverity==='Urgent'?'urgent':inc.aiSeverity==='Medium'?'medium':'low'}">${inc.aiSeverity}</span><span class="tag tag-inactive">${inc.aiCategory}</span></div>`:''} ${inc.aiSuggestion?`<div style="font-size:11px;color:var(--muted);margin-top:6px"><strong>Response:</strong> ${inc.aiSuggestion}</div>`:''}<div style="font-size:10px;color:var(--muted);margin-top:6px">${inc.timestamp}</div></div>`).join('')}</div>`;
+    }
+    async function studentSubmitIncident(){
+        const desc=document.getElementById('stu_inc_desc')?.value.trim();
+        const line=document.getElementById('stu_inc_line')?.value||null;
+        const msg=document.getElementById('stu_inc_msg');
+        if(!desc){msg.innerHTML='<span style="color:#ef4444">Please describe the issue</span>';return;}
+        const incident={uid:S.uid,driverId:null,role:'student',description:desc,relatedLine:line,timestamp:new Date().toLocaleString(),status:'pending',aiCategory:null,aiSeverity:null,aiSuggestion:null,aiLineWarning:null,aiAffectedLine:null};
+        S.data.incidents.push(incident);save('incidents');
+        msg.innerHTML='<span style="color:#22c55e">✔ Submitted!</span>';
+        document.getElementById('stu_ai_box').classList.remove('hidden');
+        await analyzeIncident(S.data.incidents.length-1,'stu_ai_content');
+        setTimeout(()=>nav('incidents'),2200);
+    }
+
+    // ===== DRIVER VIEWS =====
+    function getDriver(){ return S.data.drivers.find(d=>d.id.toUpperCase()===S.uid.toUpperCase()); }
+    function viewDriverHome(){
+        const drv=getDriver();
+        if(!drv) return'<div class="panel"><p style="color:var(--muted)">Driver not found</p></div>';
+        const line=S.data.lines.find(l=>l.name===drv.line);
+        const bus=S.data.buses.find(b=>b.line===drv.line);
+        const myInc=S.data.incidents.filter(i=>i.driverId===drv.id);
+        const myNotifs=S.data.notifications.filter(n=>n.driverId===drv.id&&!n.read);
+        return`<div style="background:linear-gradient(135deg,#15803d,#0369a1);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:16px"><div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.5px">Welcome back</div><div style="font-size:22px;font-weight:800;margin-top:2px">${drv.name}</div><div style="font-size:13px;opacity:.8;margin-top:4px">${drv.id}</div></div>
+  ${myNotifs.length>0?`<div class="alert-box alert-change"><div style="font-weight:700;font-size:13px;margin-bottom:4px">⚠ Schedule Updated!</div>${myNotifs.map(n=>`<div style="font-size:12px;margin-top:4px">• ${n.message}</div>`).join('')}<button onclick="markNotifsRead('${drv.id}')" style="margin-top:8px;padding:4px 12px;border-radius:6px;border:none;background:#854d0e;color:#fff;font-size:11px;cursor:pointer">Mark as Read</button></div>`:''}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px"><div class="info-box"><div class="label">Assigned Line</div><div class="value" style="font-size:13px">${drv.line||'—'}</div><div style="margin-top:6px"><span class="tag tag-${line&&line.status==='active'?'active':'inactive'}">${line?line.status:'inactive'}</span></div></div><div class="info-box"><div class="label">Station</div><div class="value">${drv.station||'—'}</div></div><div class="info-box"><div class="label">Shift Time</div><div class="value">${drv.time||'—'}</div></div><div class="info-box"><div class="label">Bus Occupancy</div><div class="value">${bus?`${bus.reserved}/${bus.capacity}`:'—'}</div>${bus&&bus.reserved>=bus.capacity?'<div style="margin-top:4px"><span class="tag tag-urgent">FULL</span></div>':''}</div></div>
+  <div class="stat-grid"><div class="stat"><div class="num" style="color:#f59e0b">${myInc.filter(i=>i.status==='pending').length}</div><div class="lbl">My Pending Reports</div></div><div class="stat"><div class="num" style="color:#22c55e">${myInc.filter(i=>i.status==='resolved').length}</div><div class="lbl">Resolved</div></div></div>`;
+    }
+    function viewDriverSchedule(){
+        const drv=getDriver();
+        if(!drv) return'<div class="panel"><p style="color:var(--muted)">Driver not found</p></div>';
+        const line=S.data.lines.find(l=>l.name===drv.line);
+        const bus=S.data.buses.find(b=>b.line===drv.line);
+        const reservations=S.data.reservations.filter(r=>r.bus===bus?.name);
+        return`<div class="panel"><h3><i class="fas fa-route" style="color:var(--brand)"></i> My Line</h3><div class="info-box"><div class="label">Line Name</div><div class="value">${drv.line||'Not assigned'}</div></div><div class="info-box"><div class="label">Status</div><div class="value"><span class="tag tag-${line&&line.status==='active'?'active':'inactive'}">${line?line.status:'inactive'}</span></div></div><div class="info-box"><div class="label">Departure Time</div><div class="value">${line?line.nextTime:'—'}</div></div></div>
+  <div class="panel"><h3><i class="fas fa-map-marker-alt" style="color:var(--brand)"></i> My Station</h3><div class="info-box"><div class="label">Assigned Station</div><div class="value">${drv.station||'—'}</div></div></div>
+  <div class="panel"><h3><i class="fas fa-bus" style="color:var(--brand)"></i> My Bus</h3>${bus?`<div class="info-box"><div class="label">Bus</div><div class="value">${bus.name}</div></div><div class="info-box"><div class="label">Capacity</div><div class="value">${bus.capacity} seats</div></div><div class="info-box"><div class="label">Reserved</div><div class="value">${bus.reserved}/${bus.capacity}${bus.reserved>=bus.capacity?' <span class="tag tag-urgent" style="margin-left:8px">FULL</span>':''}</div></div><div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Occupancy</div><div style="background:var(--bg);border-radius:6px;height:8px;overflow:hidden"><div style="background:var(--brand);height:8px;width:${Math.min(100,(bus.reserved/bus.capacity)*100).toFixed(0)}%;border-radius:6px"></div></div></div><div style="margin-top:12px;font-size:12px;color:var(--muted)">${reservations.length} student(s) reserved on this bus</div>`:'<p style="font-size:13px;color:var(--muted)">No bus assigned to your line</p>'}</div>`;
+    }
+    function viewDriverReport(){
+        return`<div class="panel"><h3><i class="fas fa-exclamation-triangle" style="color:var(--brand)"></i> Report an Incident</h3><div class="form-group" style="margin-bottom:12px"><label>Description</label><textarea id="drv_inc_desc" placeholder="Describe the issue clearly..." style="min-height:100px;resize:vertical"></textarea></div><button class="submit-btn" onclick="driverSubmitIncident()"><i class="fas fa-paper-plane"></i> Submit Report</button><div id="drv_inc_msg" style="text-align:center;font-size:13px;margin-top:8px"></div><div id="drv_ai_box" class="hidden" style="margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px"><div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px"><i class="fas fa-robot"></i> AI Analysis</div><div id="drv_ai_content" style="font-size:12px;color:var(--muted)" class="msg-thinking">Analyzing...</div></div></div>`;
+    }
+    function viewDriverMyIncidents(){
+        const drv=getDriver();
+        const myInc=S.data.incidents.filter(i=>i.driverId===drv?.id).slice().reverse();
+        return`<div class="panel"><h3><i class="fas fa-list" style="color:var(--brand)"></i> My Reports (${myInc.length})</h3>${myInc.length===0?'<p style="color:var(--muted);text-align:center;font-size:13px;padding:20px">No reports submitted yet</p>':myInc.map(inc=>`<div style="padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);margin-bottom:8px;border-left:4px solid ${inc.status==='resolved'?'#22c55e':'#f59e0b'}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-size:13px;font-weight:600;color:var(--text);flex:1">${inc.description}</div><span class="tag tag-${inc.status==='resolved'?'resolved':'pending'}" style="margin-left:8px;white-space:nowrap">${inc.status}</span></div>${inc.aiCategory?`<div style="display:flex;gap:6px;margin-top:6px"><span class="tag tag-${inc.aiSeverity==='Urgent'?'urgent':inc.aiSeverity==='Medium'?'medium':'low'}">${inc.aiSeverity}</span><span class="tag tag-inactive">${inc.aiCategory}</span></div>`:''} ${inc.aiSuggestion?`<div style="font-size:11px;color:var(--muted);margin-top:6px"><strong>Admin action:</strong> ${inc.aiSuggestion}</div>`:''}<div style="font-size:10px;color:var(--muted);margin-top:6px">${inc.timestamp}</div></div>`).join('')}</div>`;
+    }
+
+    // ===== AI VIEW =====
+    function viewAI(){
+        if(S.role==='driver') return`<div class="panel"><p style="color:var(--muted)">AI not available for drivers</p></div>`;
+        const isAdmin=S.role==='admin';
+        return`<div class="ai-grad"><div style="display:flex;align-items:center;gap:12px"><i class="fas fa-robot" style="font-size:28px"></i><div><div style="font-size:18px;font-weight:800">Naveo AI</div><div style="font-size:12px;opacity:.75">${isAdmin?'Network intelligence':'Personal assistant'}</div></div></div></div>
+  ${isAdmin?`<div class="panel"><h3><i class="fas fa-magic" style="color:var(--brand)"></i> Network Analysis</h3><button class="btn-primary" onclick="runAnalysis()" style="margin-bottom:12px"><i class="fas fa-magic"></i> Analyze Network</button><div id="analysisResult"><p style="font-size:13px;color:var(--muted)">Click to run AI analysis</p></div></div>`:''}
+  <div class="panel"><h3><i class="fas fa-comments" style="color:var(--brand)"></i> Chat</h3><div class="chat-box" id="chatBox"><div class="msg-ai"><i class="fas fa-robot" style="margin-right:4px;opacity:.7"></i>Hello! How can I help?</div></div><div class="chat-input-row"><input id="chatInput" placeholder="Ask me..." onkeydown="if(event.key==='Enter')sendChat()"><button class="chat-send" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button></div></div>`;
+    }
+
+    // ===== CRUD =====
+    function addLine(){const name=document.getElementById('nl_name').value.trim();const station=document.getElementById('nl_station').value;const time=document.getElementById('nl_time').value||'08:00';if(!name){alert('Enter line name');return;}S.data.lines.push({name,status:'inactive',nextTime:time,station});save('lines');nav('lines');}
+    function toggleLine(i){const l=S.data.lines[i];l.status=l.status==='active'?'inactive':'active';save('lines');S.data.drivers.filter(d=>d.line===l.name).forEach(d=>{S.data.notifications.push({driverId:d.id,message:`Your line "${l.name}" has been ${l.status}.`,read:false,timestamp:new Date().toLocaleString()});});save('notifications');nav('lines');}
+    function updateLineTime(i,time){const old=S.data.lines[i].nextTime;S.data.lines[i].nextTime=time;save('lines');if(old!==time){S.data.drivers.filter(d=>d.line===S.data.lines[i].name).forEach(d=>{S.data.notifications.push({driverId:d.id,message:`Departure time for "${S.data.lines[i].name}" changed from ${old} to ${time}.`,read:false,timestamp:new Date().toLocaleString()});});save('notifications');}}
+    function deleteLine(i){if(confirm('Delete line?')){S.data.lines.splice(i,1);save('lines');nav('lines');}}
+    function addStation(){const v=document.getElementById('ns_name').value.trim();if(!v)return;S.data.stations.push(v);save('stations');nav('stations');}
+    function deleteStation(i){if(confirm('Delete station?')){S.data.stations.splice(i,1);save('stations');nav('stations');}}
+    function addBus(){const name=document.getElementById('nb_name').value.trim();const cap=parseInt(document.getElementById('nb_cap').value)||50;const line=document.getElementById('nb_line').value;const time=document.getElementById('nb_time').value||'08:00';if(!name||!line){alert('Fill all fields');return;}S.data.buses.push({name,capacity:cap,reserved:0,line,time});save('buses');nav('buses');}
+    function editBus(i){const b=S.data.buses[i];showModal(`<h3><i class="fas fa-bus" style="color:var(--brand)"></i> Edit Bus</h3><div class="form-group" style="margin-bottom:10px"><label>Name</label><input id="eb_name" value="${b.name}"></div><div class="form-group" style="margin-bottom:10px"><label>Capacity</label><input type="number" id="eb_cap" value="${b.capacity}" min="1"></div><div class="form-group" style="margin-bottom:10px"><label>Line</label><select id="eb_line">${S.data.lines.map(l=>`<option value="${l.name}" ${l.name===b.line?'selected':''}>${l.name}</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:10px"><label>Time</label><input type="time" id="eb_time" value="${b.time}"></div><div class="modal-footer"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveBus(${i})">Save</button></div>`);}
+    function saveBus(i){const old=S.data.buses[i];const newLine=document.getElementById('eb_line').value;S.data.buses[i]={...old,name:document.getElementById('eb_name').value.trim(),capacity:parseInt(document.getElementById('eb_cap').value)||old.capacity,line:newLine,time:document.getElementById('eb_time').value||old.time};save('buses');closeModal();nav('buses');}
+    function deleteBus(i){if(confirm('Delete bus?')){S.data.buses.splice(i,1);save('buses');nav('buses');}}
+    function addDriver(){const id=document.getElementById('nd_id').value.trim().toUpperCase();const name=document.getElementById('nd_name').value.trim();const line=document.getElementById('nd_line').value;const time=document.getElementById('nd_time').value||'08:00';const station=document.getElementById('nd_station').value;if(!id||!name){alert('Fill ID and name');return;}if(S.data.drivers.find(d=>d.id.toUpperCase()===id)){alert('Driver ID already exists');return;}S.data.drivers.push({id,name,line,time,station});save('drivers');nav('drivers');}
+    function editDriver(i){const d=S.data.drivers[i];showModal(`<h3><i class="fas fa-id-card" style="color:var(--brand)"></i> Edit Driver</h3><div class="form-group" style="margin-bottom:10px"><label>ID</label><input id="ed_id" value="${d.id}"></div><div class="form-group" style="margin-bottom:10px"><label>Name</label><input id="ed_name" value="${d.name}"></div><div class="form-group" style="margin-bottom:10px"><label>Line</label><select id="ed_line"><option value="">No line</option>${S.data.lines.map(l=>`<option value="${l.name}" ${l.name===d.line?'selected':''}>${l.name}</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:10px"><label>Station</label><select id="ed_station"><option value="">No station</option>${S.data.stations.map(s=>`<option value="${s}" ${s===d.station?'selected':''}>${s}</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:10px"><label>Shift Time</label><input type="time" id="ed_time" value="${d.time||'08:00'}"></div><div class="modal-footer"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveDriver(${i})">Save</button></div>`);}
+    function saveDriver(i){const old=S.data.drivers[i];const newLine=document.getElementById('ed_line').value;const newStation=document.getElementById('ed_station').value;const newTime=document.getElementById('ed_time').value;const changed=[];if(old.line!==newLine)changed.push(`Line changed to "${newLine||'None'}"`);if(old.station!==newStation)changed.push(`Station changed to "${newStation||'None'}"`);if(old.time!==newTime)changed.push(`Shift time changed to ${newTime}`);S.data.drivers[i]={...old,id:document.getElementById('ed_id').value.trim(),name:document.getElementById('ed_name').value.trim(),line:newLine,station:newStation,time:newTime};save('drivers');if(changed.length>0){S.data.notifications.push({driverId:S.data.drivers[i].id,message:changed.join('. ')+'.',read:false,timestamp:new Date().toLocaleString()});save('notifications');}closeModal();nav('drivers');}
+    function deleteDriver(i){if(confirm('Remove driver?')){S.data.drivers.splice(i,1);save('drivers');nav('drivers');}}
+    function deleteReservation(i){const r=S.data.reservations[i];const b=S.data.buses.find(x=>x.name===r.bus);if(b&&b.reserved>0)b.reserved--;S.data.reservations.splice(i,1);save('reservations');save('buses');nav('reservations');}
+    function editReservation(i){const r=S.data.reservations[i];showModal(`<h3><i class="fas fa-edit" style="color:var(--brand)"></i> Edit Reservation</h3><div class="form-group" style="margin-bottom:10px"><label>Student ID</label><input id="er_sid" value="${r.studentId}" maxlength="12"></div><div class="form-group" style="margin-bottom:10px"><label>Bus</label><select id="er_bus">${S.data.buses.map(b=>`<option value="${b.name}" ${b.name===r.bus?'selected':''}>${b.name}</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:10px"><label>Line</label><select id="er_line">${S.data.lines.map(l=>`<option value="${l.name}" ${l.name===r.line?'selected':''}>${l.name}</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:10px"><label>Station</label><select id="er_station">${S.data.stations.map(s=>`<option value="${s}" ${s===r.station?'selected':''}>${s}</option>`).join('')}</select></div><div class="form-group" style="margin-bottom:10px"><label>Time</label><input type="time" id="er_time" value="${r.time}"></div><div class="modal-footer"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveReservation(${i})">Save</button></div>`);}
+    function saveReservation(i){const sid=document.getElementById('er_sid').value.trim();if(sid.length!==12||isNaN(sid)){alert('Le matricule doit comporter 12 chiffres');return;}S.data.reservations[i]={...S.data.reservations[i],studentId:sid,bus:document.getElementById('er_bus').value,line:document.getElementById('er_line').value,station:document.getElementById('er_station').value,time:document.getElementById('er_time').value};save('reservations');closeModal();nav('reservations');}
+    function resolveIncident(i){S.data.incidents[i].status='resolved';save('incidents');nav('incidents');}
+    function deleteIncident(i){S.data.incidents.splice(i,1);save('incidents');nav('incidents');}
+    function disableLine(lineName){const l=S.data.lines.find(x=>x.name===lineName);if(l){l.status='inactive';save('lines');S.data.drivers.filter(d=>d.line===lineName).forEach(d=>{S.data.notifications.push({driverId:d.id,message:`Your line "${lineName}" has been disabled due to an incident.`,read:false,timestamp:new Date().toLocaleString()});});save('notifications');}nav('incidents');}
+    function markNotifsRead(driverId){S.data.notifications.filter(n=>n.driverId===driverId).forEach(n=>n.read=true);save('notifications');nav('driverHome');}
+    function updateBusOpts(){const line=document.getElementById('bk_line')?.value;const sel=document.getElementById('bk_bus');if(!sel)return;const buses=S.data.buses.filter(b=>b.line===line);sel.innerHTML=buses.length?buses.map(b=>`<option value="${b.name}">${b.name} (${b.capacity-b.reserved} free)</option>`).join(''):'<option>No buses on this line</option>';}
+    function reserve(){const line=document.getElementById('bk_line')?.value;const station=document.getElementById('bk_station')?.value;const busName=document.getElementById('bk_bus')?.value;const msg=document.getElementById('bk_msg');if(!line||!busName){msg.innerHTML='<span style="color:#ef4444">Select all fields</span>';return;}const bus=S.data.buses.find(b=>b.name===busName);if(bus.reserved>=bus.capacity){msg.innerHTML='<span style="color:#ef4444">Bus is full!</span>';return;}bus.reserved++;S.data.reservations.push({studentId:S.uid,line,station,bus:busName,time:bus.time,bookedAt:new Date().toLocaleString()});save('buses');save('reservations');msg.innerHTML='<span style="color:#22c55e;font-weight:700">✔ Reserved!</span>';setTimeout(()=>nav('home'),900);}
+    function cancelReservation(gi){const r=S.data.reservations[gi];const b=S.data.buses.find(x=>x.name===r.bus);if(b&&b.reserved>0)b.reserved--;S.data.reservations.splice(gi,1);save('reservations');save('buses');nav('myreservations');}
+
+    // ===== INCIDENT SUBMIT =====
+    async function driverSubmitIncident(){
+        const desc=document.getElementById('drv_inc_desc')?.value.trim();
+        const msg=document.getElementById('drv_inc_msg');
+        const drv=getDriver();
+        if(!desc){msg.innerHTML='<span style="color:#ef4444">Please describe the issue</span>';return;}
+        const incident={uid:S.uid,driverId:drv?.id,role:'driver',description:desc,timestamp:new Date().toLocaleString(),status:'pending',aiCategory:null,aiSeverity:null,aiSuggestion:null,aiLineWarning:null,aiAffectedLine:null};
+        S.data.incidents.push(incident);save('incidents');
+        msg.innerHTML='<span style="color:#22c55e">✔ Submitted!</span>';
+        document.getElementById('drv_ai_box').classList.remove('hidden');
+        await analyzeIncident(S.data.incidents.length-1,'drv_ai_content');
+        setTimeout(()=>nav('driverMyIncidents'),2000);
+    }
+    async function analyzeIncident(idx,contentElId){
+        const inc=S.data.incidents[idx];
+        const lineNames=S.data.lines.map(l=>l.name).join(', ');
+        try{
+            const res=await callClaude(`You are AI for Naveo, an Algerian university transport system.\nReported by ${inc.role}: "${inc.description}"\nAvailable lines: ${lineNames}\nRespond ONLY valid JSON, no markdown:\n{"category":"Delay|Breakdown|Overload|Behavior|Other","severity":"Urgent|Medium|Low","suggestion":"max 20 words","affectedLine":"exact line name or null","lineWarning":"warning or null"}`);
+            const ai=JSON.parse(res.replace(/```json|```/g,'').trim());
+            S.data.incidents[idx].aiCategory=ai.category;S.data.incidents[idx].aiSeverity=ai.severity;S.data.incidents[idx].aiSuggestion=ai.suggestion;S.data.incidents[idx].aiLineWarning=ai.lineWarning;S.data.incidents[idx].aiAffectedLine=ai.affectedLine;save('incidents');
+            const el=document.getElementById(contentElId);
+            if(el){el.classList.remove('msg-thinking');el.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="tag tag-${ai.severity==='Urgent'?'urgent':ai.severity==='Medium'?'medium':'low'}">${ai.severity}</span><span class="tag tag-inactive">${ai.category}</span></div><div style="font-size:12px">${ai.suggestion}</div>${ai.lineWarning?`<div style="color:#991b1b;font-size:12px;margin-top:4px">⚠ ${ai.lineWarning}</div>`:''}`;}
+        }catch(e){const el=document.getElementById(contentElId);if(el)el.innerHTML=`<span style="color:#ef4444;font-size:12px">AI Error: ${e.message}</span>`;}
+    }
+    async function sendChat(){
+        const input=document.getElementById('chatInput');const q=input.value.trim();const box=document.getElementById('chatBox');
+        if(!q)return;input.value='';
+        box.innerHTML+=`<div class="msg-user">${q}</div><div class="msg-ai msg-thinking" id="thinking">Thinking...</div>`;
+        box.scrollTop=9999;
+        const ctx={lines:S.data.lines,buses:S.data.buses,incidents:S.data.incidents,reservations:S.data.reservations.length,drivers:S.data.drivers.length};
+        try{const r=await callClaude(`You are Naveo AI for ${S.role} "${S.uid}". Data: ${JSON.stringify(ctx)}. Question: "${q}". Answer in English, friendly, concise, max 80 words, use emojis.`);document.getElementById('thinking').remove();box.innerHTML+=`<div class="msg-ai"><i class="fas fa-robot" style="margin-right:4px;opacity:.7"></i>${r}</div>`;box.scrollTop=9999;}
+        catch(e){document.getElementById('thinking').remove();box.innerHTML+=`<div class="msg-ai" style="background:#fee2e2;color:#991b1b">Error: ${e.message}</div>`;}
+    }
+    async function runAnalysis(){
+        const el=document.getElementById('analysisResult');
+        el.innerHTML='<p class="msg-thinking" style="font-size:13px;color:var(--muted)">Analyzing network...</p>';
+        const ctx={lines:S.data.lines,buses:S.data.buses,incidents:S.data.incidents,reservations:S.data.reservations.length};
+        try{const r=await callClaude(`You are Naveo AI admin. Analyze: ${JSON.stringify(ctx)}. Give recommendations on lines, buses, incidents. English, structured, max 150 words.`);el.innerHTML=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.6">${r}</div>`;}
+        catch(e){el.innerHTML=`<span style="color:#ef4444;font-size:13px">Error: ${e.message}</span>`;}
+    }
+    async function callClaude(prompt){
+        const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':'YOUR_API_KEY_HERE','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompt}]})});
+        const data=await res.json();if(data.error)throw new Error(data.error.message);return data.content[0].text;
+    }
+
+    // ===== MODAL =====
+    function showModal(html){document.getElementById('modalBox').innerHTML=html;document.getElementById('modalBg').classList.remove('hidden');}
+    function closeModal(){document.getElementById('modalBg').classList.add('hidden');}
+    document.addEventListener('DOMContentLoaded', async ()=>{
+        applyDark();
+        try{ await loadBootstrap(); }catch(e){ console.error(e); }
+        document.getElementById('modalBg').addEventListener('click',e=>{if(e.target===document.getElementById('modalBg'))closeModal();});
+        document.getElementById('logoutModal').addEventListener('click',e=>{if(e.target===document.getElementById('logoutModal'))closeLogout();});
+    });
+</script>
+</body>
+</html>

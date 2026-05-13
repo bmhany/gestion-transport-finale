@@ -1,0 +1,40 @@
+Transport universitaire — dossier Navéo + API (refait / consolidé)
+==================================================================
+
+Contenu de ce dossier
+---------------------
+- Navéo-Final.html     : interface de démonstration branchée sur l’API JSON.
+- Demarrer-serveur.bat : démarre Django depuis la racine du projet (dossier parent).
+- Ouvrir-Naveo.bat     : ouvre le navigateur sur http://127.0.0.1:8000/naveo/ (lancez le serveur avant).
+
+Méthode recommandée (tout sur la même origine, sans réglage CORS)
+-----------------------------------------------------------------
+1. Racine du projet : pip install -r requirements.txt
+2. python manage.py migrate
+3. python manage.py runserver
+4. Ouvrez : http://127.0.0.1:8000/naveo/
+
+Django sert la page HTML et l’API sur le même hôte ; l’URL d’API est détectée automatiquement dans le fichier HTML.
+
+Si vous ouvrez le fichier HTML en double-clic (file://), définissez manuellement l’URL de base : http://127.0.0.1:8000/api/v1/
+
+Remplacer votre maquette Navéo
+------------------------------
+Copiez votre fichier HTML ici en remplaçant Navéo-Final.html, ou fusionnez vos écrans avec les appels fetch de la démo.
+
+Endpoints JSON (préfixe /api/v1/)
+---------------------------------
+GET  sante/
+GET  lignes/
+GET  lignes/<id>/horaires/
+GET  lignes/<id>/stations/
+POST etudiants/verifier-matricule/   { "student_number": "12 chiffres" }
+POST etudiants/connexion/            { "student_number", "password" }
+GET  etudiants/abonnements/?student_number=...
+POST abonnements/                    { student_number, password, ligne_id, date_debut [, date_fin] }
+POST abonnements/resilier/          { student_number, password, ligne_id }
+POST reservations/trajet/            { student_number, password, ligne_id, horaire_id, sens }
+POST reservations/trajet/annuler/    idem
+GET  geolocalisation/lignes-proches/?latitude=&longitude=
+
+Les réservations suivent les mêmes règles que le site Django (abonnement, trajets du jour, capacités, etc.).
